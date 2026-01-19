@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkmindstack=globalThis.webpackChunkmindstack||[]).push([[7231],{2192(a){a.exports=JSON.parse('{"metadata":{"permalink":"/Mindstack/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":4,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);
