@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunkmindstack=globalThis.webpackChunkmindstack||[]).push([[1903],{1912(s){s.exports=JSON.parse('{"blogBasePath":"/Mindstack/blog","blogTitle":"Blog","authorsListPath":"/Mindstack/blog/authors"}')}}]);
