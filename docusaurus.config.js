@@ -90,17 +90,17 @@ const config = {
       },
       footer: {
         style: 'dark',
-        links: [
-          {
-            title: 'Docs',
-            items: [
-              {
-                label: 'Tutorial',
-                to: '/docs/intro',
-              },
-            ],
-          },
-        ],
+//        links: [
+//          {
+//            title: 'Docs',
+//            items: [
+//             {
+//                label: 'Tutorial',
+//                to: '/docs/intro',
+//              },
+//           ],
+//          },
+//        ],
         copyright: `Copyright © ${new Date().getFullYear()} Mindstack, Built with Docusaurus.`,
       },
       prism: {
