@@ -4,7 +4,7 @@
 // There are various equivalent ways to declare your Docusaurus config.
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
-import {themes as prismThemes} from 'prism-react-renderer';
+import { themes as prismThemes } from 'prism-react-renderer';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -52,7 +52,7 @@ const config = {
           editUrl:
             'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
         },
-      
+
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -76,31 +76,31 @@ const config = {
         },
         items: [
           {
-            type: 'docSidebar',
-            sidebarId: 'tutorialSidebar',
-            position: 'right',
-            label: 'Tutorial',
-          },
-          {
             href: 'https://github.com/Finiferp/Mindstack',
             label: 'GitHub',
             position: 'right',
+          },
+          {
+            type: 'doc',
+            docId: 'networks/Introduction',
+            position: 'left',
+            label: 'Network',
           },
         ],
       },
       footer: {
         style: 'dark',
-//        links: [
-//          {
-//            title: 'Docs',
-//            items: [
-//             {
-//                label: 'Tutorial',
-//                to: '/docs/intro',
-//              },
-//           ],
-//          },
-//        ],
+        //        links: [
+        //          {
+        //            title: 'Docs',
+        //            items: [
+        //             {
+        //                label: 'Tutorial',
+        //                to: '/docs/intro',
+        //              },
+        //           ],
+        //          },
+        //        ],
         copyright: `Copyright © ${new Date().getFullYear()} Mindstack, Built with Docusaurus.`,
       },
       prism: {

@@ -1,9 +1,6 @@
 import clsx from 'clsx';
-import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
-import HomepageFeatures from '@site/src/components/HomepageFeatures';
-
 import Heading from '@theme/Heading';
 import styles from './index.module.css';
 
@@ -12,31 +9,33 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
+        {/* MindStaack Logo */}
+        <img
+          src="/Mindstack/img/logo.svg"
+          alt="MindStack Logo"
+          style={{maxWidth: '200px', marginBottom: '1.5rem'}}
+        />
         <Heading as="h1" className="hero__title">
           {siteConfig.title}
         </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
-          </Link>
-        </div>
       </div>
     </header>
   );
 }
 
 export default function Home() {
-  const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title="Welcome to MindStaack"
+      description="My personal IT knowledge hub">
       <HomepageHeader />
-      <main>
-        <HomepageFeatures />
+      <main style={{padding: '2rem', maxWidth: '800px', margin: '0 auto', lineHeight: '1.6'}}>
+        <p>
+          Welcome to MindStack, my personal IT knowledge hub. If you stumbled here by accident, this is my space to document everything I learn about IT — from tips and tricks to configurations, scripts, and best practices.
+        </p>
+        <p>
+          If you notice errors or have suggestions to improve the content, feel free to reach out through any contact method you prefer. I appreciate your feedback, but I cannot guarantee all suggestions will be implemented.
+        </p>
       </main>
     </Layout>
   );
