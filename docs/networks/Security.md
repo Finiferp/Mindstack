@@ -4,32 +4,86 @@ sidebar_label: "Security"
 sidebar_position: 6
 ---
 
-# Security Fundamentals
+# Network Security Fundamentals
 
-**Access Control Lists (ACLs)** filter traffic at the router or switch. An ACL is a list of permit/deny rules applied to interfaces. Standard ACLs filter by source IP only, while extended ACLs can filter on source/destination IP, protocol, and port. For example:
+Network security ensures that data, devices, and infrastructure are protected from unauthorized access, misuse, and attacks. Security in networking involves **access control, authentication, encryption, and monitoring**, all designed to maintain confidentiality, integrity, and availability.
 
-```text
-access-list 10 deny 10.0.0.0 0.255.255.255
-access-list 10 permit any
-interface GigabitEthernet0/0
- ip access-group 10 in
-```
+---
 
-This ACL 10 denies traffic from 10.0.0.0/8 and permits all else. Remember that ACLs have an implicit “deny all” at the end.
+## Access Control Lists (ACLs)
 
-<strong>AAA (Authentication, Authorization, Accounting)</strong> secures device access. Authentication verifies user identity (e.g. username/password), authorization determines what they may do, and accounting logs their actions
-. On a Cisco device, you might enable AAA with:
-```text
-aaa new-model
-aaa authentication login default local
-aaa authorization exec default local
-aaa accounting commands 15 default start-stop
-username admin secret cisco123
-```
-This uses local credentials for login and logs high-level commands.
+**ACLs** are rules applied at network devices (routers or switches) to filter traffic based on defined criteria. They act as the first line of defense for controlling which packets are allowed or denied.
 
-<strong>Wireless Security</strong>: Wi-Fi networks should use strong encryption. WEP is obsolete; WPA2 (or WPA3) with AES encryption is recommended. Use complex passphrases or enterprise 802.1X authentication (RADIUS) to protect wireless networks.
+Key points:
 
-<strong>VPNs (Virtual Private Networks)</strong>: VPNs encrypt traffic over untrusted networks. IPsec VPNs (site-to-site or remote access) or SSL VPNs provide secure tunnels for data. VPN configuration involves defining encryption domains and shared secrets or certificates.
+- **Standard ACLs** filter traffic based solely on the **source IP address**.  
+- **Extended ACLs** can filter based on **source and destination IP**, **protocol type**, and **port numbers**.  
+- ACLs are processed **top-to-bottom**, and unmatching traffic is typically **implicitly denied**.  
+- ACLs can be applied **inbound** (traffic entering an interface) or **outbound** (traffic leaving an interface).  
 
-<strong>Troubleshooting (Security)</strong>: Check ACL hit counts with ``show access-lists`` to see if rules match traffic. Verify AAA login with ``show authentication`` sessions or log files. For VPNs, ensure peer addresses and keys match, and use ``debug crypto`` for IPsec. On wireless, ensure client and AP encryption methods match.
+ACLs are essential for **traffic segmentation, enforcing security policies, and limiting access to critical resources**.
+
+---
+
+## AAA – Authentication, Authorization, and Accounting
+
+**AAA** is a security framework for managing access to network devices:
+
+1. **Authentication** – Verifies the identity of users or devices (e.g., passwords, certificates, multi-factor methods).  
+2. **Authorization** – Determines **what actions** an authenticated user is allowed to perform.  
+3. **Accounting** – Logs actions and events for auditing, monitoring, or compliance purposes.  
+
+AAA allows administrators to **enforce policy consistently, monitor usage, and track accountability** across network infrastructure.
+
+---
+
+## Wireless Security
+
+Wireless networks are inherently more vulnerable due to the broadcast nature of radio signals. Key principles include:
+
+- **Strong encryption**: Use AES-based protocols such as WPA2 or WPA3. Avoid deprecated methods like WEP.  
+- **Secure authentication**: Enterprise-grade networks can implement 802.1X authentication with RADIUS servers to control access.  
+- **Complex passphrases**: Protects against brute-force attacks.  
+- **Segmentation**: Isolating guest networks from internal resources prevents unauthorized access.
+
+Wireless security ensures that mobile and IoT devices can connect safely without exposing the network to attackers.
+
+---
+
+## Virtual Private Networks (VPNs)
+
+**VPNs** create secure tunnels over untrusted networks, such as the Internet. Concepts:
+
+- **Encryption** – Data is encoded to prevent eavesdropping.  
+- **Authentication** – Devices or users prove identity before connecting.  
+- **Types of VPNs**:  
+  - **Site-to-site VPNs**: Connect entire networks securely.  
+  - **Remote access VPNs**: Provide secure access for individual users.  
+
+VPNs maintain **confidentiality, integrity, and authenticity** of transmitted data across public networks.
+
+---
+
+## Conceptual Troubleshooting of Security Services
+
+When ensuring network security works as intended, consider:
+
+- **ACLs**: Verify that rules align with intended traffic flows. Check which traffic is permitted or blocked conceptually.  
+- **AAA**: Confirm that user authentication, permissions, and logging policies are correctly enforced.  
+- **VPNs**: Ensure peers, encryption domains, and authentication mechanisms are compatible.  
+- **Wireless**: Ensure encryption protocols match between client devices and access points, and verify access policies and isolation are correctly applied.  
+
+Troubleshooting security conceptually focuses on **policy correctness, alignment between security mechanisms, and verification of intended access and protection**, rather than on device-specific commands.
+
+---
+
+## Summary
+
+Network security integrates multiple layers of defense:
+
+- **Traffic filtering (ACLs)**  
+- **Identity management (AAA)**  
+- **Secure connectivity (VPNs)**  
+- **Wireless protection**  
+
+These principles provide **confidential, reliable, and auditable network operations**, forming the foundation for secure modern IT infrastructure.

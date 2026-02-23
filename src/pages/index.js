@@ -9,7 +9,7 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
-        {/* MindStaack Logo */}
+        {/* MindStack Logo */}
         <img
           src="/Mindstack/img/logo.svg"
           alt="MindStack Logo"
@@ -26,7 +26,7 @@ function HomepageHeader() {
 export default function Home() {
   return (
     <Layout
-      title="Welcome to MindStaack"
+      title="Welcome to MindStack"
       description="My personal IT knowledge hub">
       <HomepageHeader />
       <main style={{padding: '2rem', maxWidth: '800px', margin: '0 auto', lineHeight: '1.6'}}>

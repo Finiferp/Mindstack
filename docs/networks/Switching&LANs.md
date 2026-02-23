@@ -6,33 +6,71 @@ sidebar_position: 3
 
 # Switching and VLANs
 
-Switches operate at the Data Link layer to forward frames within a LAN. They learn which MAC addresses reside on which ports by examining incoming frames. Once learned, a switch forwards each frame only to the port of the destination MAC, greatly increasing efficiency compared to a hub. Each switch port defines its own **collision domain**, while the whole switch (by default) is a single **broadcast domain**.
+Switches operate at the **Data Link layer (Layer 2)** to forward frames within a local area network (LAN). Their primary function is to deliver frames from a source MAC address to the correct destination MAC address, which is learned dynamically by observing incoming frames.
 
-**Virtual LANs (VLANs)** segment a switch into multiple separate broadcast domains. Each VLAN functions like an independent LAN: devices in VLAN 10, for example, communicate freely among themselves but require a router to reach VLAN 20. VLANs are configured by assigning switch ports to a VLAN ID. This allows network designers to group users logically (by function, department, etc.) regardless of physical location, improving security and performance by limiting broadcasts.
+Key concepts:
 
-To carry multiple VLANs over one link, switches use a **trunk port**. A trunk link carries traffic for several VLANs by tagging frames with the VLAN ID using 802.1Q (industry standard) or ISL (Cisco proprietary) encapsulation. For example, on a Cisco switch:
+- **Collision domains**: Each switch port represents a separate collision domain, reducing collisions compared to hubs.  
+- **Broadcast domains**: By default, all ports on a switch belong to a single broadcast domain; broadcasts are sent to all ports.  
 
-```text
-switch(config)# interface GigabitEthernet0/1
-switch(config-if)# switchport mode access
-switch(config-if)# switchport access vlan 10
+This separation allows switches to improve network efficiency, performance, and scalability.
 
-switch(config)# interface GigabitEthernet0/24
-switch(config-if)# switchport trunk encapsulation dot1q
-switch(config-if)# switchport mode trunk
-```
-This assigns VLAN 10 to port `G0/1` and makes port `G0/24` a 802.1Q trunk. Use `show interfaces trunk` to verify trunk status and allowed VLANs.
+---
+
+## Virtual LANs (VLANs)
+
+**VLANs** divide a physical switch into multiple logical broadcast domains. Each VLAN operates as an independent LAN:
+
+- Devices in the same VLAN communicate freely at Layer 2.  
+- Devices in different VLANs require a router or Layer 3 device to communicate.  
+
+Benefits of VLANs:
+
+- **Logical segmentation**: Group users or devices by function, department, or security requirements, independent of physical location.  
+- **Reduced broadcast traffic**: Limiting the size of broadcast domains improves performance.  
+- **Enhanced security**: Devices in different VLANs are isolated unless explicit routing is provided.
+
+### VLAN Trunking
+
+To transmit multiple VLANs across a single physical link, **trunking** is used. Concepts:
+
+- **Trunk ports** carry frames from multiple VLANs between switches.  
+- Each frame is **tagged** with its VLAN identifier (e.g., using 802.1Q encapsulation).  
+- Trunking enables efficient inter-VLAN communication and scalability across the network backbone.
+
+---
 
 ## Spanning Tree Protocol (STP)
 
-Spanning Tree Protocol (STP) prevents Layer 2 loops in networks with redundant switch links. Redundant links improve resilience but create loops that cause broadcast storms. STP dynamically blocks certain switch ports so that only one active path exists between switches.  
+Redundant links between switches increase network resilience but create the risk of **Layer 2 loops**, which can cause broadcast storms and MAC table instability. **STP** addresses this by:
 
-If an active link fails, STP reactivates a blocked link to maintain connectivity. Each switch elects a **root bridge** (lowest Bridge ID) and blocks redundant ports to ensure a loop-free topology.
+- Electing a **root bridge**, which serves as the reference point for path calculations.  
+- Dynamically **blocking redundant ports** to maintain a single active path between switches.  
+- Re-activating blocked links automatically if active paths fail, preserving connectivity without loops.
 
-## Troubleshooting (Switching/VLAN)
+STP ensures a **loop-free topology** while maintaining redundancy for fault tolerance.
 
-- Verify trunks are configured consistently on both ends (check encapsulation and native VLAN).  
-- Use `show vlan` to confirm port VLAN assignments.  
-- Check STP with `show spanning-tree` to see which ports are blocked or forwarding.  
-- Use `show mac address-table` to see learned MAC addresses and ensure correct traffic flow.  
-- If using port security, check violation counters with `show port-security`.
+---
+
+## Conceptual Troubleshooting
+
+When analyzing a switched network:
+
+- Verify that VLANs are assigned consistently and that devices are in the correct logical segments.  
+- Ensure that trunk links carry all required VLANs and that tagging matches across devices.  
+- Confirm STP topology is functioning correctly, identifying which ports are forwarding or blocked.  
+- Check MAC address tables to ensure that frames are being learned and forwarded properly.  
+- Monitor port-level security policies conceptually to ensure they do not block legitimate devices.
+
+---
+
+## Summary
+
+Switching and VLANs enable:
+
+- Efficient frame delivery within LANs  
+- Logical segmentation and isolation  
+- Redundant, loop-free topologies via STP  
+- Scalable inter-VLAN connectivity through trunking  
+
+These concepts are foundational for understanding modern enterprise LAN design, traffic management, and network resilience.
