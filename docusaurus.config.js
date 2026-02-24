@@ -82,6 +82,12 @@ const config = {
             position: 'left',
             label: 'Network',
           },
+          {
+            type: 'doc',
+            docId: 'git&versioncontrol/Introduction',
+            position: 'left',
+            label: 'Git & Version Control',
+          },
         ],
       },
       footer: {

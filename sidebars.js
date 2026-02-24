@@ -45,6 +45,23 @@ const sidebars = {
         'networks/Security',
       ],
     },
+    {
+      type: 'category',
+      label: 'Git & Version Control',
+      items: [
+        'git&versioncontrol/Introduction',
+        'git&versioncontrol/GitFundamentals',
+        'git&versioncontrol/Internals',
+        'git&versioncontrol/Branching',
+        'git&versioncontrol/Rebasing',
+        'git&versioncontrol/Collaboration',
+        'git&versioncontrol/Remotes',
+        'git&versioncontrol/Workflows',
+        'git&versioncontrol/Advanced',
+        'git&versioncontrol/Git&DevOps',
+        'git&versioncontrol/Commands',
+      ],
+    },
     // Add other categories (Backend, Frontend, IoT, etc.) here
   ],
 };
