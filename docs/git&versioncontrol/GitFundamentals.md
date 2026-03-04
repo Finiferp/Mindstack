@@ -6,122 +6,166 @@ sidebar_position: 2
 
 # Git Fundamentals
 
-Git is a distributed version control system designed for speed, integrity, and distributed collaboration.
+Git is a distributed version control system.  
+It is designed to be fast, reliable, and good for teamwork.
 
-## Core Concepts
-
-### Repository
-
-A **repository** is a complete database of tracked files and their history.
-
-There are two types:
-- Local repository
-- Remote repository
-
-### Working Directory
-
-The working directory contains the actual files being edited.
-
-### Staging Area (Index)
-
-The staging area is an intermediate layer between the working directory and the repository. It allows selective preparation of changes before committing.
-
-### Commit
-
-A commit is a snapshot of the project at a specific point in time. Each commit contains:
-- A unique identifier (hash)
-- Author information
-- Timestamp
-- Reference to previous commit(s)
-
-Commits form a chain, creating a historical timeline.
-
-## Snapshot Model vs Delta Model
-
-Unlike older systems that store file differences (deltas), Git stores full snapshots of files. If a file has not changed, Git references the existing version instead of duplicating it.
-
-This design enables fast branching and merging.---
-title: "Git Fundamentals"
-sidebar_label: "Git Fundamentals"
-sidebar_position: 2
 ---
 
-# Git Fundamentals
+# Core Concepts
 
-Git is a distributed version control system designed for speed, integrity, and distributed collaboration.
+## Repository
 
-## Core Concepts
+A **repository** (or "repo") is the place where Git stores your project and its history.
 
-### Repository
+It contains:
+- Your project files
+- All previous versions (commits)
+- Git configuration data
 
-A **repository** is a complete database of tracked files and their history.
+There are two main types of repositories:
 
-There are two types:
-- Local repository
-- Remote repository
+### Local Repository
+This is the repository on your computer.
 
-### Working Directory
+You can:
+- Make commits
+- Create branches
+- View history
+- Work without internet
 
-The working directory contains the actual files being edited.
+### Remote Repository
+This is a repository stored on a server.
 
-### Staging Area (Index)
+It is used to:
+- Share code
+- Collaborate with others
+- Backup your work
 
-The staging area is an intermediate layer between the working directory and the repository. It allows selective preparation of changes before committing.
+Example:
+- Your laptop has the local repository.
+- GitHub or GitLab hosts the remote repository.
 
-### Commit
-
-A commit is a snapshot of the project at a specific point in time. Each commit contains:
-- A unique identifier (hash)
-- Author information
-- Timestamp
-- Reference to previous commit(s)
-
-Commits form a chain, creating a historical timeline.
-
-## Snapshot Model vs Delta Model
-
-Unlike older systems that store file differences (deltas), Git stores full snapshots of files. If a file has not changed, Git references the existing version instead of duplicating it.
-
-This design enables fast branching and merging.---
-title: "Git Fundamentals"
-sidebar_label: "Git Fundamentals"
-sidebar_position: 2
 ---
 
-# Git Fundamentals
+## Working Directory
 
-Git is a distributed version control system designed for speed, integrity, and distributed collaboration.
+The **working directory** is the folder where you actually edit your files.
 
-## Core Concepts
+Example:
+- You open `app.js`
+- You change some code
+- You save the file
 
-### Repository
+At this point:
+- The file is changed
+- But Git has NOT saved this change yet
 
-A **repository** is a complete database of tracked files and their history.
+Git sees the modification, but it is not part of history until you commit it.
 
-There are two types:
-- Local repository
-- Remote repository
+---
 
-### Working Directory
+## Staging Area (Index)
 
-The working directory contains the actual files being edited.
+The **staging area** is a middle step between editing files and making a commit.
 
-### Staging Area (Index)
+It allows you to choose exactly what will go into the next commit.
 
-The staging area is an intermediate layer between the working directory and the repository. It allows selective preparation of changes before committing.
+Think of it like a "preparation table".
 
-### Commit
+Example:
 
-A commit is a snapshot of the project at a specific point in time. Each commit contains:
-- A unique identifier (hash)
-- Author information
-- Timestamp
-- Reference to previous commit(s)
+You changed three files:
+- login.js
+- register.js
+- style.css
 
-Commits form a chain, creating a historical timeline.
+But you only want to commit the login feature first.
 
-## Snapshot Model vs Delta Model
+You can stage only `login.js`, then commit it.
 
-Unlike older systems that store file differences (deltas), Git stores full snapshots of files. If a file has not changed, Git references the existing version instead of duplicating it.
+To add a file to the staging area:
 
-This design enables fast branching and merging.
+```console
+git add login.js
+```
+Now Git prepares this file for the next commit.
+
+---
+
+## Commit
+
+A **commit** is a snapshot of your project at a specific moment.
+
+When you commit, Git saves:
+- The current staged files
+- Your name
+- The date and time
+- A message describing the change
+- A unique ID (called a hash)
+
+To create a commit:
+
+```console
+git commit -m "Add login functionality"
+```
+
+Each commit has a unique hash (like: a3f5c8d9...).  
+This allows Git to identify it exactly.
+
+---
+
+### How Commits Work
+
+Commits form a chain.
+
+Each commit:
+- Points to the previous commit
+- Creates a timeline of changes
+
+Example timeline:
+
+Commit A → Commit B → Commit C
+
+If something breaks in Commit C, you can go back to Commit B.
+
+This makes Git very powerful and safe.
+
+---
+
+# Snapshot Model vs Delta Model
+
+Older version control systems stored changes as **file differences** (called deltas).
+
+Example:
+- Line 5 changed from "Hello" to "Hello World"
+
+Git works differently.
+
+## Git's Snapshot Model
+
+Git stores a full snapshot of your project at each commit.
+
+Important:
+- Git does NOT copy every file again and again.
+- If a file did not change, Git simply references the existing version.
+
+This makes Git:
+- Very fast
+- Very efficient
+- Great for branching and merging
+
+---
+
+## Why This Matters
+
+Because Git stores snapshots:
+
+- Creating branches is very fast.
+- Switching between versions is very fast.
+- Merging changes is more reliable.
+
+This design is one of the main reasons Git became so popular.
+
+---
+
+In the next section, we will see how these concepts work together in real workflows.

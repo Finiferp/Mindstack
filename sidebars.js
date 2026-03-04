@@ -31,11 +31,10 @@
 //
 
 const sidebars = {
-  docsSidebar: [
+  networkSidebar: [
     {
       type: 'category',
       label: 'Network',
-
       items: [
         'networks/Introduction',
         'networks/Fundamentals',
@@ -45,6 +44,9 @@ const sidebars = {
         'networks/Security',
       ],
     },
+  ],
+
+  gitSidebar: [
     {
       type: 'category',
       label: 'Git & Version Control',
@@ -62,7 +64,6 @@ const sidebars = {
         'git&versioncontrol/Commands',
       ],
     },
-    // Add other categories (Backend, Frontend, IoT, etc.) here
   ],
 };
 

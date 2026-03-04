@@ -6,403 +6,302 @@ sidebar_position: 11
 
 # Git Commands Reference
 
-This section explains common Git commands, what they do internally, and when they should be used. Commands are grouped by lifecycle stage: repository setup, tracking changes, branching, collaboration, and recovery.
+This page lists common Git commands, what they do internally, and when to use them.  
+Commands are grouped by workflow stage: repository setup, tracking changes, branching, collaboration, recovery, and advanced topics.
+
+Understanding how commands interact with Git’s **working directory**, **staging area**, and **repository** is key to mastering Git.
 
 ---
 
 # 1. Repository Initialization
 
+To initialize a new Git repository:
+
 ```console
 git init
-```
-Initializes a new Git repository in the current directory.  
-Creates a hidden .git directory containing the object database, references, configuration, and HEAD pointer.  
-Use when starting a new project.
+```  
+Creates a hidden `.git` folder containing the object database, references, configuration, and HEAD pointer. Use this when starting a new project.
 
----
+To clone a remote repository:
 
 ```console
 git clone <repository-url>
-```
-
-Creates a full local copy of a remote repository.  
-This includes:
-- All commits
-- All branches
-- Full history
-- Remote configuration
-
-Clone establishes a default remote called "origin".
+```  
+Creates a local copy of a remote repository with all commits, branches, full history, and remote configuration (`origin`).  
+Example: ```console
+git clone https://github.com/example/project.git`
 
 ---
 
 # 2. Tracking and Recording Changes
 
+To see the current status of your files:
+
 ```console
 git status
-```
+```  
+Shows modified files, staged files, untracked files, and the current branch. Use it to understand the state of your working directory and staging area.
 
-Shows:
-- Modified files
-- Staged files
-- Untracked files
-- Current branch
-
-Used to understand the current working directory and staging area state.
-
----
+To stage a file for commit:
 
 ```console
 git add <file>
-```
+```  
+Stages changes in a file for the next commit. Does **not** commit yet — just prepares the snapshot.
 
-Adds file changes to the staging area (index).  
-This does NOT commit changes — it prepares them.
-
-Git records a snapshot of the file’s current content into the index.
-
----
+To stage all changes:
 
 ```console
 git add .
-```
+```  
+Stages all modified and new files in the current directory. Use carefully — may include unintended files.
 
-Stages all modified and new files in the current directory.
-
-Use carefully — may include unintended files.
-
----
+To commit staged changes:
 
 ```console
 git commit -m "message"
-```
+```  
+Creates a commit from staged changes. A commit contains a tree (snapshot of files), parent commit pointer, metadata (author, timestamp), and commit message.
 
-Creates a commit from the staged snapshot.  
-A commit contains:
-- Tree reference
-- Parent commit pointer
-- Metadata
-- Commit message
-
-Commits form the project history.
-
----
+To modify the most recent commit:
 
 ```console
 git commit --amend
-```
-
-Modifies the most recent commit.  
-Rewrites commit history by creating a new commit object.
-
-Should not be used on shared commits.
+```  
+Creates a new commit object. Do **not** use on commits already shared with others.
 
 ---
 
 # 3. Viewing History
 
+To see the full commit history:
+
 ```console
 git log
-```
-
+```  
 Displays commit history in reverse chronological order.
 
----
+To see a compact, visual view:
 
 ```console
 git log --oneline --graph --all
-```
+```  
+Shows branch structure, merge history, and commit relationships. Useful for visualizing Git’s DAG structure.
 
-Compact view of:
-- Branch structure
-- Merge history
-- Commit relationships
-
-Useful for visualizing DAG structure.
-
----
+To view a specific commit:
 
 ```console
 git show <commit>
-```
+```  
+Displays commit metadata and changes introduced by that commit.
 
-Displays:
-- Commit metadata
-- File changes introduced in that commit
-
----
+To see file differences:
 
 ```console
 git diff
-```
-
-Shows differences between:
-- Working directory and staging area
-- Staging area and last commit
-
-Helps inspect changes before committing.
+```  
+Shows differences between working directory and staging area, or staging area and last commit.
 
 ---
 
 # 4. Branching and Navigation
 
+To list all local branches:
+
 ```console
 git branch
 ```
 
-Lists all local branches.
-
----
+To create a new branch:
 
 ```console
 git branch <branch-name>
 ```
 
-Creates a new branch pointer at current commit.
-
----
+To switch branches:
 
 ```console
 git checkout <branch-name>
-```
+```  
+Updates HEAD pointer and working directory files.
 
-Switches working directory to another branch.  
-Updates:
-- HEAD pointer
-- Working directory files
-
----
+To create and switch to a new branch in one step:
 
 ```console
 git checkout -b <branch-name>
 ```
 
-Creates and switches to a new branch in one step.
-
----
+Modern alternative to switching branches:
 
 ```console
 git switch <branch-name>
 ```
 
-Modern alternative to checkout for switching branches.
-
----
+To merge another branch into the current one:
 
 ```console
 git merge <branch-name>
-```
+```  
+Possible outcomes: fast-forward merge, three-way merge, or conflict.
 
-Integrates another branch into the current branch.
-
-Possible outcomes:
-- Fast-forward merge
-- Three-way merge
-- Conflict
-
----
+To reapply commits onto another base:
 
 ```console
 git rebase <branch-name>
-```
-
-Reapplies commits from current branch onto another base.
-
-Creates new commit hashes.
-
-Produces linear history.
+```  
+Produces a linear history with new commit hashes.
 
 ---
 
 # 5. Remote Collaboration
 
+To see configured remotes:
+
 ```console
 git remote -v
 ```
 
-Displays configured remote repositories.
-
----
+To fetch changes from a remote:
 
 ```console
 git fetch
-```
+```  
+Downloads changes without merging them. Updates remote-tracking branches.
 
-Downloads changes from remote repository.  
-Does NOT merge them.
-
-Updates remote-tracking branches.
-
----
+To fetch and merge:
 
 ```console
 git pull
+```  
+Equivalent to
+```console
+git fetch
+git merge (or rebase)
 ```
 
-Equivalent to:
-- Fetch
-- Then merge (or rebase)
-
-Updates local branch with remote changes.
-
----
+To push local commits:
 
 ```console
 git push
-```
+```  
+Uploads local commits to the remote repository. May fail if the remote has diverged or history was rewritten.
 
-Uploads local commits to remote repository.
-
-Push may be rejected if:
-- Remote has diverged
-- History was rewritten
-
----
+To force push:
 
 ```console
 git push --force
-```
-
-Forces remote branch update.
-
-Dangerous: rewrites remote history.
+```  
+**Dangerous** — rewrites remote history. Use with caution.
 
 ---
 
 # 6. Undoing Changes
 
+To restore a file to its last committed state:
+
 ```console
 git restore <file>
 ```
 
-Restores file to last committed state.
-
----
+To move a branch pointer to a specific commit:
 
 ```console
 git reset <commit>
-```
+```  
+Options:  
+- `--soft` moves HEAD only  
+- `--mixed` (default) moves HEAD and resets staging area  
+- `--hard` moves HEAD, staging area, and working directory (permanently discards changes)
 
-Moves branch pointer to specified commit.
-
-Types:
-
---soft  
-Moves HEAD only.
-
---mixed (default)  
-Moves HEAD and resets staging area.
-
---hard  
-Moves HEAD and resets staging area and working directory.
-
-Hard reset permanently discards changes.
-
----
+To undo a specific commit safely:
 
 ```console
 git revert <commit>
-```
-
-Creates a new commit that reverses changes from a specific commit.
-
-Safe for shared history.
+```  
+Creates a new commit that undoes changes from the target commit.
 
 ---
 
 # 7. Stashing
 
+To temporarily save uncommitted changes:
+
 ```console
 git stash
-```
+```  
+Cleans the working directory.
 
-Temporarily stores uncommitted changes.
-
-Working directory becomes clean.
-
----
+To apply stashed changes:
 
 ```console
 git stash pop
-```
+```  
+Restores changes and removes them from the stash list.
 
-Restores stashed changes and removes them from stash list.
-
----
+To view stashed changes:
 
 ```console
 git stash list
 ```
 
-Shows saved stashes.
-
 ---
 
 # 8. Tags
 
+To create a lightweight tag:
+
 ```console
 git tag <tag-name>
-```
+```  
 
-Creates lightweight tag pointing to current commit.
-
----
+To create an annotated tag:
 
 ```console
 git tag -a <tag-name>
-```
-
-Creates annotated tag with metadata.
-
-Used for releases.
+```  
+Includes metadata; commonly used for releases.
 
 ---
 
 # 9. Advanced & Recovery
 
+To see HEAD movement history:
+
 ```console
 git reflog
-```
+```  
+Useful for recovering lost commits.
 
-Shows history of HEAD movements.
-
-Allows recovery of lost commits.
-
----
+To apply a specific commit to your branch:
 
 ```console
 git cherry-pick <commit>
 ```
 
-Applies changes from a specific commit onto current branch.
-
----
+To find the commit that introduced a bug:
 
 ```console
 git bisect
-```
+```  
+Performs a binary search.
 
-Binary search tool to find commit that introduced a bug.
-
----
+To clean unreachable objects:
 
 ```console
 git gc
-```
-
-Runs garbage collection to clean unreachable objects and optimize repository.
+```  
+Optimizes repository storage.
 
 ---
 
 # 10. Submodules
 
+To add a repository inside another repository:
+
 ```console
 git submodule add <repo>
-```
-
-Adds external repository inside current repository.
-
-Used for dependency embedding.
+```  
+Useful for dependencies or shared libraries.
 
 ---
 
@@ -410,8 +309,6 @@ Used for dependency embedding.
 
 Git commands operate on three main areas:
 
-1. Working Directory
-2. Staging Area (Index)
-3. Repository (Commit History)
-
-Understanding how commands move data between these three areas is the key to mastering Git.
+1. **Working Directory** – where you edit files  
+2. **Staging Area (Index)** – prepares changes for commit  
+3. **Repository (Commit History)** – stores snapshots and metadata  
