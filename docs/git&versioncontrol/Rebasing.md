@@ -19,21 +19,21 @@ Rebasing takes your commits and "replays" them on top of another branch.
 # What Does Rebasing Mean?
 
 Imagine this history:
-
+```
 main:      A → B → C  
 feature:         D → E  
-
+```
 The feature branch was created from commit B.
 
 While you were working on feature:
 - The main branch moved forward (commit C was added).
 
 Now your history looks like this:
-
+```
 A → B → C        (main)  
      \  
       D → E      (feature)
-
+```
 If you rebase feature onto main:
 
 ```console
@@ -76,11 +76,11 @@ git merge feature
 ```  
 
 History may look like:
-
+```
         D → E  
        /       \  
 A → B → C        M  
-
+```
 You can clearly see where branches split and merged.
 
 ### Advantages of Merge

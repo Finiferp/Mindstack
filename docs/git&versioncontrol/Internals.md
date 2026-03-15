@@ -182,13 +182,13 @@ That means:
 - Graph → branches create multiple paths
 
 Example:
-
+```
         C
        /
 A → B
        \
         D
-
+```
 Here:
 - B has two children (C and D)
 - This represents branching

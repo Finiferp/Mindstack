@@ -22,8 +22,9 @@ Because of this design, branching in Git is:
 
 Imagine your commit history looks like this:
 
+```
 A → B → C
-
+```
 The `main` branch points to commit C.
 
 If you create a new branch:
@@ -45,15 +46,15 @@ And create a new commit:
 git commit -m "Add login page"
 ````
 Your history now looks like this:
-
+```
 A → B → C → D  
              ↑  
      feature-login  
-
+```
 While:
-
+```
 main → C
-
+```
 The branches have now separated.
 
 ---
@@ -115,10 +116,10 @@ Git now integrates the changes.
 This happens when the target branch has no new commits.
 
 Example:
-
+```
 main → A → B  
 feature → A → B → C → D  
-
+```
 If you merge feature into main:
 
 Git simply moves the main pointer forward to D.
@@ -126,9 +127,9 @@ Git simply moves the main pointer forward to D.
 No extra commit is created.
 
 Result:
-
+```
 main → A → B → C → D  
-
+```
 This is called a **fast-forward** merge.
 
 ---
@@ -138,13 +139,13 @@ This is called a **fast-forward** merge.
 This happens when both branches have new commits.
 
 Example:
-
+```
         C  
        /  
 A → B  
        \  
         D  
-
+```
 Here:
 - C is on feature branch
 - D is on main branch
@@ -158,13 +159,13 @@ Git uses:
 It combines all three versions to create a new merge commit.
 
 Result:
-
+```
         C  
        /   \  
 A → B       M  
        \   /  
         D  
-
+```
 M is a new **merge commit**.
 
 ---
