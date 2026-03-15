@@ -88,6 +88,12 @@ const config = {
             position: 'left',
             label: 'Git & Version Control',
           },
+          {
+            type: 'doc',
+            docId: 'linux/SystemArchitecture',
+            position: 'left',
+            label: 'Linux' 
+          }
         ],
       },
       footer: {

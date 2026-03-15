@@ -65,6 +65,17 @@ const sidebars = {
       ],
     },
   ],
+  linuxSidebar: [
+    {
+      type: 'category',
+      label: 'Linux',
+      items: [
+        'linux/SystemArchitecture',
+        'linux/Bootloaders',
+        'linux/ServerCLI'
+      ]
+    }
+  ]
 };
 
 
