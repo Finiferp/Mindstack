@@ -1,276 +1,113 @@
 ---
-title: "Networking with NetworkManager"
+title: "Linux Networking"
 sidebar_label: "Networking"
-sidebar_position: 5
+sidebar_position: 8
 ---
 
-# Networking in Linux
+# Linux Networking
 
-Most Linux distributions use **NetworkManager** for network management. While **systemd** provides networking capabilities, they are cumbersome to configure. NetworkManager simplifies networking with two main tools:
+Linux provides tools to **configure, monitor, and troubleshoot network connections**.  
 
-- **`nmcli`** – Command-line tool to manage network connections (Wi-Fi, Ethernet, VPNs).  
-- **`nmtui`** – Text-based user interface for easier configuration, though less powerful than `nmcli`.
+Key concepts:
 
----
-
-## Get Full List of Network Interfaces
-
-- Basic IP information:
-
-```bash
-ip address
-```
-
-- Detailed interface information (DNS, routing, gateway, etc.):
-
-```bash
-nmcli device show <interface>
-```
-
-- Status of all interfaces managed by NetworkManager:
-
-```bash
-nmcli device status
-```
+- Network interfaces (wired, wireless, virtual)  
+- IP addresses (IPv4/IPv6)  
+- Routing and gateways  
+- DNS resolution  
+- Firewalls (iptables/nftables)
 
 ---
 
-## Managing Network Connections with `nmcli`
+## IP Addresses
 
-> ⚠️ Important: Conflicting network managers can cause issues. Disable any of the following if running: `systemd-networkd`, `netplan`, `dhcpcd`, `dnsmasq`, `dhclient`, or `wicd`.
+View IP addresses for all interfaces:
 
-- List all network connections:
+`ip a`  
+or  
+`ip addr show`
 
+Example output:
 ```bash
-nmcli con show
+nameserver 8.8.8.8
+nameserver 8.8.4.4
 ```
 
-- List available Wi-Fi networks:
+Test DNS resolution:
 
-```bash
-nmcli device wifi list
-```
-
-- Connect to a Wi-Fi network:
-
-```bash
-nmcli device wifi connect <SSID> password <PASSWORD>
-```
-
-- Disconnect from a network:
-
-```bash
-nmcli device disconnect <INTERFACE>
-```
-
-- Delete a connection:
-
-```bash
-nmcli con delete <CONNECTION_NAME>
-```
-
-- Add a new Ethernet connection:
-
-```bash
-nmcli con add type ethernet ifname <INTERFACE> con-name <CONNECTION_NAME>
-```
-
-- Modify an existing connection:
-
-```bash
-nmcli con mod <CONNECTION_NAME> <SETTING> <VALUE>
-```
-
-- Activate a connection:
-
-```bash
-nmcli con up <CONNECTION_NAME>
-```
-
-- Deactivate a connection:
-
-```bash
-nmcli con down <CONNECTION_NAME>
-```
-
-- Make connections persistent across reboots:
-
-```bash
-nmcli con mod <CONNECTION_NAME> connection.autoconnect yes
-```
+`nslookup google.com`  
+`dig google.com`
 
 ---
 
-## DHCP
+## Wireless Networking (Wi-Fi)
 
-Dynamic Host Configuration Protocol (DHCP) automatically assigns IP addresses and network settings. Common Linux DHCP clients:
+List wireless interfaces:
 
-- `dhclient` – Standard, reliable, slightly slow.  
-- `dhcpcd` – Lightweight, fast, full-featured.  
-- `systemd-networkd` – Fast, works well, but hard to configure.  
-- NetworkManager internal DHCP client – Simple, fast, integrated.
+`iw dev`  
+or  
+`nmcli device status` (if NetworkManager installed)
 
----
+Connect to Wi-Fi (NetworkManager CLI):
 
-## Static IP Configuration with `nmcli`
-
-Steps to configure a static IP:
-
-1. List interfaces:
-
-```bash
-nmcli device status
-```
-
-2. Set static IP, gateway, DNS, and method:
-
-```bash
-nmcli con mod eth0 ipv4.addresses <IP_ADDRESS>/24
-nmcli con mod eth0 ipv4.gateway <GATEWAY_IP>
-nmcli con mod eth0 ipv4.dns <DNS_IP>
-nmcli con mod eth0 ipv4.method manual
-```
-
-3. Restart the connection:
-
-```bash
-nmcli con down eth0 && nmcli con up eth0
-```
-
-4. Ensure autoconnect:
-
-```bash
-nmcli con mod eth0 connection.autoconnect yes
-```
+`nmcli device wifi connect SSID password PASSWORD`
 
 ---
 
-## DNS Configuration
+## Network Statistics
 
-By default, Linux uses **`systemd-resolved`**. Configure DNS via `nmcli`:
-
-1. List connections:
-
-```bash
-nmcli con show
-```
-
-2. Set DNS server:
-
-```bash
-nmcli con mod eth0 ipv4.dns <DNS_IP>
-```
-
-3. Restart the connection:
-
-```bash
-nmcli con down eth0 && nmcli con up eth0
-```
+- `ifconfig` → legacy, shows IP and stats  
+- `ip -s link` → shows interface statistics  
+- `netstat -tulnp` → active TCP/UDP listening ports  
+- `ss -tulnp` → newer alternative to netstat  
 
 ---
 
-## Managing Connections with `nmtui`
+## Firewalls
 
-`nmtui` provides a text-based interface:
+Linux uses **iptables** or **nftables** for packet filtering.
 
-1. Launch `nmtui`:
+Check active rules:
+
+`sudo iptables -L -v`  
+
+Enable simple firewall with ufw:
 
 ```bash
-nmtui
+sudo ufw enable
+sudo ufw allow 22/tcp   # allow SSH
+sudo ufw status
 ```
+---
 
-2. Navigate menus using arrow keys:  
-   - **Edit a connection** – modify settings.  
-   - **Activate a connection** – bring it up.  
-   - **Quit** – exit the interface.  
-
-> Persistent configuration is automatic, as `nmtui` edits NetworkManager profiles directly.
+## Useful Networking Commands Summary
+| Task                 | Command                                  |
+| -------------------- | ---------------------------------------- |
+| Show IP              | `ip a`                                   |
+| Show interfaces      | `ip link`                                |
+| Assign IP            | `ip addr add 192.168.1.50/24 dev enp0s3` |
+| Default gateway      | `ip route add default via 192.168.1.1`   |
+| Test connectivity    | `ping google.com`                        |
+| Trace route          | `traceroute google.com`                  |
+| DNS lookup           | `dig google.com` / `nslookup google.com` |
+| List listening ports | `ss -tulnp`                              |
 
 ---
 
-## Creating a Network Bridge with `nmcli`
+## Best Practices
 
-1. Create a bridge:
-
-```bash
-nmcli con add type bridge ifname br0
-```
-
-2. Add an interface to the bridge:
-
-```bash
-nmcli con add type bridge-slave ifname eth0 master br0
-```
-
-3. Configure the bridge:
-
-- Static IP:
-
-```bash
-nmcli con mod br0 ipv4.addresses <IP_ADDRESS>/24
-nmcli con mod br0 ipv4.gateway <GATEWAY_IP>
-nmcli con mod br0 ipv4.dns <DNS_IP>
-nmcli con mod br0 ipv4.method manual
-```
-
-- DHCP:
-
-```bash
-nmcli con mod br0 ipv4.method auto
-```
-
-4. Activate the bridge:
-
-```bash
-nmcli con up br0
-```
+- Use `ip` instead of `ifconfig` / `route`
+- Always check routing and gateway if network fails
+- Use `ping` and `traceroute` to debug connectivity
+- DNS issues are often resolved by editing `/etc/resolv.conf`
+- Firewalls may block services; check `ufw` or `iptables`
 
 ---
 
-### Adding the Bridge to Virtual Machines (via `virsh`)
+## Summary
 
-1. Create XML configuration `bridge-network.xml`:
-
-```xml
-<network>
-  <name>br0net</name>
-  <forward mode='bridge'/>
-  <bridge name='br0'/>
-</network>
-```
-
-2. Define the network:
-
-```bash
-sudo virsh net-define bridge-network.xml
-```
-
-3. Start the network:
-
-```bash
-sudo virsh net-start br0net
-```
-
-4. Enable autostart:
-
-```bash
-sudo virsh net-autostart br0net
-```
-
----
-
-## Troubleshooting Network Issues
-
-Common tools:
-
-- `ping` – test connectivity.  
-- `traceroute` – trace packet routes.  
-- `ifconfig` / `ip addr` – view interface configuration.  
-- `netstat` / `ss` – monitor connections and routing.  
-- `nmcli` – manage NetworkManager.  
-- `journalctl -u NetworkManager` – view logs.  
-- `systemctl status NetworkManager` – check service status.  
-- `resolvectl` – manage and inspect DNS.  
-- `ethtool <interface>` – inspect Ethernet settings.
-
-> ⚠️ Disable conflicting network managers (`systemd-networkd`, `netplan`, `dhcpcd`, `dnsmasq`, `dhclient`, `wicd`) to avoid interference.
+Linux networking tools allow you to:
+- Configure IP addresses and interfaces
+- Manage routing and gateways
+- Test connectivity and resolve DNS
+- Monitor network statistics and services
+- Control traffic via firewalls

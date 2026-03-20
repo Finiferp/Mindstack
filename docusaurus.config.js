@@ -90,7 +90,7 @@ const config = {
           },
           {
             type: 'doc',
-            docId: 'linux/SystemArchitecture',
+            docId: 'linux/LinuxBasics',
             position: 'left',
             label: 'Linux' 
           }

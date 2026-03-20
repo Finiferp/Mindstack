@@ -70,9 +70,19 @@ const sidebars = {
       type: 'category',
       label: 'Linux',
       items: [
-        'linux/SystemArchitecture',
-        'linux/Bootloaders',
-        'linux/ServerCLI'
+        'linux/LinuxBasics',
+        'linux/Filesystem',
+        'linux/BasicCommands',
+        'linux/Permissions',
+        'linux/Packages',
+        'linux/Users',
+        'linux/Services',
+        'linux/Networking',
+        'linux/Logs',
+        'linux/Maintenance',
+        'linux/Troubleshooting',
+        'linux/Security',
+        'linux/Advanced'
       ]
     }
   ]
