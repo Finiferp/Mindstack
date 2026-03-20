@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-linux/BasicCommands" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">Linux Commands | Mindstack</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://Finiferp.github.io/Mindstack/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://Finiferp.github.io/Mindstack/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://Finiferp.github.io/Mindstack/docs/linux/BasicCommands"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Linux Commands | Mindstack"><meta data-rh="true" name="description" content="Linux systems are primarily controlled via the shell (terminal)."><meta data-rh="true" property="og:description" content="Linux systems are primarily controlled via the shell (terminal)."><link data-rh="true" rel="icon" href="/Mindstack/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://Finiferp.github.io/Mindstack/docs/linux/BasicCommands"><link data-rh="true" rel="alternate" href="https://Finiferp.github.io/Mindstack/docs/linux/BasicCommands" hreflang="en"><link data-rh="true" rel="alternate" href="https://Finiferp.github.io/Mindstack/docs/linux/BasicCommands" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Basic Commands","item":"https://Finiferp.github.io/Mindstack/docs/linux/BasicCommands"}]}</script><link rel="stylesheet" href="/Mindstack/assets/css/styles.9d286273.css">
+<script src="/Mindstack/assets/js/runtime~main.af802836.js" defer="defer"></script>
+<script src="/Mindstack/assets/js/main.6776160f.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/Mindstack/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/Mindstack/"><div class="navbar__logo"><img src="/Mindstack/img/logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/Mindstack/img/logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Mindstack</b></a><a class="navbar__item navbar__link" href="/Mindstack/docs/networks/Introduction">Network</a><a class="navbar__item navbar__link" href="/Mindstack/docs/git&amp;versioncontrol/Introduction">Git &amp; Version Control</a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/Mindstack/docs/linux/LinuxBasics">Linux</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/Finiferp/Mindstack" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" href="/Mindstack/docs/linux/LinuxBasics"><span title="Linux" class="categoryLinkLabel_W154">Linux</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/LinuxBasics"><span title="Linux Basics" class="linkLabel_WmDU">Linux Basics</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Filesystem"><span title="Filesystem" class="linkLabel_WmDU">Filesystem</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/Mindstack/docs/linux/BasicCommands"><span title="Basic Commands" class="linkLabel_WmDU">Basic Commands</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Permissions"><span title="Permissions" class="linkLabel_WmDU">Permissions</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Packages"><span title="Packages" class="linkLabel_WmDU">Packages</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Users"><span title="Users" class="linkLabel_WmDU">Users</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Services"><span title="Services" class="linkLabel_WmDU">Services</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Networking"><span title="Networking" class="linkLabel_WmDU">Networking</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Logs"><span title="Logs" class="linkLabel_WmDU">Logs</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Maintenance"><span title="Maintenance" class="linkLabel_WmDU">Maintenance</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Troubleshooting"><span title="Troubleshooting" class="linkLabel_WmDU">Troubleshooting</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Security"><span title="Security" class="linkLabel_WmDU">Security</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/Mindstack/docs/linux/Advanced"><span title="Advanced" class="linkLabel_WmDU">Advanced</span></a></li></ul></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/Mindstack/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">Linux</span></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Basic Commands</span></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Basic Commands</h1></header>
+<p>Linux systems are primarily controlled via the <strong>shell (terminal)</strong>.</p>
+<p>Commands follow this general structure:</p>
+<p><code>command [options] [arguments]</code></p>
+<p>Example:</p>
+<p><code>ls -la /home/user</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="navigation">Navigation<a href="#navigation" class="hash-link" aria-label="Direct link to Navigation" title="Direct link to Navigation" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="pwd">pwd<a href="#pwd" class="hash-link" aria-label="Direct link to pwd" title="Direct link to pwd" translate="no">​</a></h3>
+<p>Print current working directory.</p>
+<p><code>pwd</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ls">ls<a href="#ls" class="hash-link" aria-label="Direct link to ls" title="Direct link to ls" translate="no">​</a></h3>
+<p>List directory contents.</p>
+<p>Common options:</p>
+<ul>
+<li class=""><code>-l</code> → long format (permissions, owner, size)</li>
+<li class=""><code>-a</code> → show hidden files</li>
+<li class=""><code>-h</code> → human-readable sizes</li>
+</ul>
+<p>Examples:</p>
+<p><code>ls</code><br>
+<code>ls -la</code><br>
+<code>ls -lh /etc</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cd">cd<a href="#cd" class="hash-link" aria-label="Direct link to cd" title="Direct link to cd" translate="no">​</a></h3>
+<p>Change directory.</p>
+<p>Examples:</p>
+<p><code>cd /home/user</code><br>
+<code>cd ..</code> → go up one directory<br>
+<code>cd ~</code> → go to home directory<br>
+<code>cd -</code> → previous directory</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="file-operations">File Operations<a href="#file-operations" class="hash-link" aria-label="Direct link to File Operations" title="Direct link to File Operations" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cp">cp<a href="#cp" class="hash-link" aria-label="Direct link to cp" title="Direct link to cp" translate="no">​</a></h3>
+<p>Copy files and directories.</p>
+<p>Examples:</p>
+<p><code>cp file.txt backup.txt</code><br>
+<code>cp -r folder/ backup/</code></p>
+<p>Options:</p>
+<ul>
+<li class=""><code>-r</code> → recursive (for directories)</li>
+<li class=""><code>-i</code> → prompt before overwrite</li>
+</ul>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="mv">mv<a href="#mv" class="hash-link" aria-label="Direct link to mv" title="Direct link to mv" translate="no">​</a></h3>
+<p>Move or rename files.</p>
+<p>Examples:</p>
+<p><code>mv file.txt new.txt</code><br>
+<code>mv file.txt /home/user/</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="rm">rm<a href="#rm" class="hash-link" aria-label="Direct link to rm" title="Direct link to rm" translate="no">​</a></h3>
+<p>Remove files or directories.</p>
+<p>Examples:</p>
+<p><code>rm file.txt</code><br>
+<code>rm -r folder/</code></p>
+<p>Options:</p>
+<ul>
+<li class=""><code>-r</code> → recursive</li>
+<li class=""><code>-f</code> → force (no confirmation)</li>
+</ul>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="touch">touch<a href="#touch" class="hash-link" aria-label="Direct link to touch" title="Direct link to touch" translate="no">​</a></h3>
+<p>Create empty file or update timestamp.</p>
+<p>Example:</p>
+<p><code>touch file.txt</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="mkdir">mkdir<a href="#mkdir" class="hash-link" aria-label="Direct link to mkdir" title="Direct link to mkdir" translate="no">​</a></h3>
+<p>Create directory.</p>
+<p>Example:</p>
+<p><code>mkdir new_folder</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="rmdir">rmdir<a href="#rmdir" class="hash-link" aria-label="Direct link to rmdir" title="Direct link to rmdir" translate="no">​</a></h3>
+<p>Remove empty directory.</p>
+<p>Example:</p>
+<p><code>rmdir folder</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="viewing-files">Viewing Files<a href="#viewing-files" class="hash-link" aria-label="Direct link to Viewing Files" title="Direct link to Viewing Files" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cat">cat<a href="#cat" class="hash-link" aria-label="Direct link to cat" title="Direct link to cat" translate="no">​</a></h3>
+<p>Display entire file.</p>
+<p><code>cat file.txt</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="less">less<a href="#less" class="hash-link" aria-label="Direct link to less" title="Direct link to less" translate="no">​</a></h3>
+<p>Scroll through file (recommended for large files).</p>
+<p><code>less file.txt</code></p>
+<p>Navigation:</p>
+<ul>
+<li class=""><code>q</code> → quit</li>
+<li class=""><code>/text</code> → search</li>
+</ul>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="head">head<a href="#head" class="hash-link" aria-label="Direct link to head" title="Direct link to head" translate="no">​</a></h3>
+<p>Show first lines of file.</p>
+<p><code>head file.txt</code><br>
+<code>head -n 20 file.txt</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="tail">tail<a href="#tail" class="hash-link" aria-label="Direct link to tail" title="Direct link to tail" translate="no">​</a></h3>
+<p>Show last lines of file.</p>
+<p><code>tail file.txt</code><br>
+<code>tail -n 20 file.txt</code></p>
+<p>Follow live updates:</p>
+<p><code>tail -f /var/log/syslog</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="file-information">File Information<a href="#file-information" class="hash-link" aria-label="Direct link to File Information" title="Direct link to File Information" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="file">file<a href="#file" class="hash-link" aria-label="Direct link to file" title="Direct link to file" translate="no">​</a></h3>
+<p>Determine file type.</p>
+<p><code>file filename</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stat">stat<a href="#stat" class="hash-link" aria-label="Direct link to stat" title="Direct link to stat" translate="no">​</a></h3>
+<p>Detailed file information.</p>
+<p><code>stat file.txt</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="search-and-find">Search and Find<a href="#search-and-find" class="hash-link" aria-label="Direct link to Search and Find" title="Direct link to Search and Find" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="find">find<a href="#find" class="hash-link" aria-label="Direct link to find" title="Direct link to find" translate="no">​</a></h3>
+<p>Search for files in directory tree.</p>
+<p>Example:</p>
+<p><code>find /home -name file.txt</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="grep">grep<a href="#grep" class="hash-link" aria-label="Direct link to grep" title="Direct link to grep" translate="no">​</a></h3>
+<p>Search inside files.</p>
+<p>Example:</p>
+<p><code>grep &quot;text&quot; file.txt</code></p>
+<p>Options:</p>
+<ul>
+<li class=""><code>-i</code> → ignore case</li>
+<li class=""><code>-r</code> → recursive</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="permissions-quick-use">Permissions (Quick Use)<a href="#permissions-quick-use" class="hash-link" aria-label="Direct link to Permissions (Quick Use)" title="Direct link to Permissions (Quick Use)" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="chmod">chmod<a href="#chmod" class="hash-link" aria-label="Direct link to chmod" title="Direct link to chmod" translate="no">​</a></h3>
+<p>Change file permissions.</p>
+<p>Example:</p>
+<p><code>chmod 755 script.sh</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="chown">chown<a href="#chown" class="hash-link" aria-label="Direct link to chown" title="Direct link to chown" translate="no">​</a></h3>
+<p>Change file ownership.</p>
+<p>Example:</p>
+<p><code>chown user:group file.txt</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="disk-and-system">Disk and System<a href="#disk-and-system" class="hash-link" aria-label="Direct link to Disk and System" title="Direct link to Disk and System" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="df">df<a href="#df" class="hash-link" aria-label="Direct link to df" title="Direct link to df" translate="no">​</a></h3>
+<p>Show disk space usage.</p>
+<p><code>df -h</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="du">du<a href="#du" class="hash-link" aria-label="Direct link to du" title="Direct link to du" translate="no">​</a></h3>
+<p>Show directory size.</p>
+<p><code>du -sh folder</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="free">free<a href="#free" class="hash-link" aria-label="Direct link to free" title="Direct link to free" translate="no">​</a></h3>
+<p>Show memory usage.</p>
+<p><code>free -h</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="process-management">Process Management<a href="#process-management" class="hash-link" aria-label="Direct link to Process Management" title="Direct link to Process Management" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ps">ps<a href="#ps" class="hash-link" aria-label="Direct link to ps" title="Direct link to ps" translate="no">​</a></h3>
+<p>Show running processes.</p>
+<p><code>ps aux</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="top">top<a href="#top" class="hash-link" aria-label="Direct link to top" title="Direct link to top" translate="no">​</a></h3>
+<p>Real-time process monitoring.</p>
+<p><code>top</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="kill">kill<a href="#kill" class="hash-link" aria-label="Direct link to kill" title="Direct link to kill" translate="no">​</a></h3>
+<p>Terminate process.</p>
+<p><code>kill PID</code><br>
+<code>kill -9 PID</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="help-and-documentation">Help and Documentation<a href="#help-and-documentation" class="hash-link" aria-label="Direct link to Help and Documentation" title="Direct link to Help and Documentation" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="man">man<a href="#man" class="hash-link" aria-label="Direct link to man" title="Direct link to man" translate="no">​</a></h3>
+<p>Manual pages.</p>
+<p><code>man ls</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="--help">--help<a href="#--help" class="hash-link" aria-label="Direct link to --help" title="Direct link to --help" translate="no">​</a></h3>
+<p>Quick help for commands.</p>
+<p><code>ls --help</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="command-chaining">Command Chaining<a href="#command-chaining" class="hash-link" aria-label="Direct link to Command Chaining" title="Direct link to Command Chaining" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="using-">Using &amp;&amp;<a href="#using-" class="hash-link" aria-label="Direct link to Using &amp;&amp;" title="Direct link to Using &amp;&amp;" translate="no">​</a></h3>
+<p>Run next command only if previous succeeds.</p>
+<p><code>apt update &amp;&amp; apt upgrade</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="using--1">Using |<a href="#using--1" class="hash-link" aria-label="Direct link to Using |" title="Direct link to Using |" translate="no">​</a></h3>
+<p>Pipe output to another command.</p>
+<p>Example:</p>
+<p><code>ls -la | grep file</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="redirection">Redirection<a href="#redirection" class="hash-link" aria-label="Direct link to Redirection" title="Direct link to Redirection" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="output-to-file">Output to file<a href="#output-to-file" class="hash-link" aria-label="Direct link to Output to file" title="Direct link to Output to file" translate="no">​</a></h3>
+<p><code>ls &gt; files.txt</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="append-output">Append output<a href="#append-output" class="hash-link" aria-label="Direct link to Append output" title="Direct link to Append output" translate="no">​</a></h3>
+<p><code>ls &gt;&gt; files.txt</code></p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="input-from-file">Input from file<a href="#input-from-file" class="hash-link" aria-label="Direct link to Input from file" title="Direct link to Input from file" translate="no">​</a></h3>
+<p><code>cat &lt; file.txt</code></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="summary">Summary<a href="#summary" class="hash-link" aria-label="Direct link to Summary" title="Direct link to Summary" translate="no">​</a></h2>
+<p>Linux commands:</p>
+<ul>
+<li class="">Follow structure: <code>command [options] [arguments]</code></li>
+<li class="">Are case-sensitive</li>
+<li class="">Can be combined using pipes and chaining</li>
+</ul>
+<p>Core skills:</p>
+<ul>
+<li class="">Navigation (<code>cd</code>, <code>ls</code>, <code>pwd</code>)</li>
+<li class="">File management (<code>cp</code>, <code>mv</code>, <code>rm</code>)</li>
+<li class="">Viewing (<code>less</code>, <code>cat</code>)</li>
+<li class="">Searching (<code>find</code>, <code>grep</code>)</li>
+<li class="">System inspection (<code>df</code>, <code>ps</code>, <code>top</code>)</li>
+</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/Mindstack/docs/linux/Filesystem"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Filesystem</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/Mindstack/docs/linux/Permissions"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Permissions</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#navigation" class="table-of-contents__link toc-highlight">Navigation</a><ul><li><a href="#pwd" class="table-of-contents__link toc-highlight">pwd</a></li><li><a href="#ls" class="table-of-contents__link toc-highlight">ls</a></li><li><a href="#cd" class="table-of-contents__link toc-highlight">cd</a></li></ul></li><li><a href="#file-operations" class="table-of-contents__link toc-highlight">File Operations</a><ul><li><a href="#cp" class="table-of-contents__link toc-highlight">cp</a></li><li><a href="#mv" class="table-of-contents__link toc-highlight">mv</a></li><li><a href="#rm" class="table-of-contents__link toc-highlight">rm</a></li><li><a href="#touch" class="table-of-contents__link toc-highlight">touch</a></li><li><a href="#mkdir" class="table-of-contents__link toc-highlight">mkdir</a></li><li><a href="#rmdir" class="table-of-contents__link toc-highlight">rmdir</a></li></ul></li><li><a href="#viewing-files" class="table-of-contents__link toc-highlight">Viewing Files</a><ul><li><a href="#cat" class="table-of-contents__link toc-highlight">cat</a></li><li><a href="#less" class="table-of-contents__link toc-highlight">less</a></li><li><a href="#head" class="table-of-contents__link toc-highlight">head</a></li><li><a href="#tail" class="table-of-contents__link toc-highlight">tail</a></li></ul></li><li><a href="#file-information" class="table-of-contents__link toc-highlight">File Information</a><ul><li><a href="#file" class="table-of-contents__link toc-highlight">file</a></li><li><a href="#stat" class="table-of-contents__link toc-highlight">stat</a></li></ul></li><li><a href="#search-and-find" class="table-of-contents__link toc-highlight">Search and Find</a><ul><li><a href="#find" class="table-of-contents__link toc-highlight">find</a></li><li><a href="#grep" class="table-of-contents__link toc-highlight">grep</a></li></ul></li><li><a href="#permissions-quick-use" class="table-of-contents__link toc-highlight">Permissions (Quick Use)</a><ul><li><a href="#chmod" class="table-of-contents__link toc-highlight">chmod</a></li><li><a href="#chown" class="table-of-contents__link toc-highlight">chown</a></li></ul></li><li><a href="#disk-and-system" class="table-of-contents__link toc-highlight">Disk and System</a><ul><li><a href="#df" class="table-of-contents__link toc-highlight">df</a></li><li><a href="#du" class="table-of-contents__link toc-highlight">du</a></li><li><a href="#free" class="table-of-contents__link toc-highlight">free</a></li></ul></li><li><a href="#process-management" class="table-of-contents__link toc-highlight">Process Management</a><ul><li><a href="#ps" class="table-of-contents__link toc-highlight">ps</a></li><li><a href="#top" class="table-of-contents__link toc-highlight">top</a></li><li><a href="#kill" class="table-of-contents__link toc-highlight">kill</a></li></ul></li><li><a href="#help-and-documentation" class="table-of-contents__link toc-highlight">Help and Documentation</a><ul><li><a href="#man" class="table-of-contents__link toc-highlight">man</a></li><li><a href="#--help" class="table-of-contents__link toc-highlight">--help</a></li></ul></li><li><a href="#command-chaining" class="table-of-contents__link toc-highlight">Command Chaining</a><ul><li><a href="#using-" class="table-of-contents__link toc-highlight">Using &amp;&amp;</a></li><li><a href="#using--1" class="table-of-contents__link toc-highlight">Using |</a></li></ul></li><li><a href="#redirection" class="table-of-contents__link toc-highlight">Redirection</a><ul><li><a href="#output-to-file" class="table-of-contents__link toc-highlight">Output to file</a></li><li><a href="#append-output" class="table-of-contents__link toc-highlight">Append output</a></li><li><a href="#input-from-file" class="table-of-contents__link toc-highlight">Input from file</a></li></ul></li><li><a href="#summary" class="table-of-contents__link toc-highlight">Summary</a></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 Mindstack, Built with Docusaurus.</div></div></div></footer></div>
+</body>
+</html>
