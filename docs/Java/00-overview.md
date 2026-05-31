@@ -14,13 +14,13 @@ Personal reference for the Java backend ecosystem. Split into three areas — th
 
 | Page | Covers |
 |---|---|
-| [Fundamentals](./01-java-fundamentals) | Types, operators, control flow, arrays, methods, strings |
-| [OOP](./02-java-oop) | Classes, inheritance, polymorphism, interfaces, enums, records |
-| [Collections & Generics](./03-java-collections) | List, Set, Map, Queue, type-safe generics |
-| [Streams & Lambdas](./04-java-streams) | Functional pipelines, Optional, parallel streams |
-| [Exceptions & I/O](./05-java-exceptions-io) | Error handling, file reading/writing, try-with-resources |
-| [Concurrency](./06-java-concurrency) | Threads, ExecutorService, CompletableFuture, virtual threads |
-| [Modern Java](./18-modern-java) | Records, sealed classes, text blocks, pattern matching, var |
+| [Fundamentals](./01-java-fundamentals.md) | Types, operators, control flow, arrays, methods, strings |
+| [OOP](./02-java-oop.md) | Classes, inheritance, polymorphism, interfaces, enums, records |
+| [Collections & Generics](./03-java-collections.md) | List, Set, Map, Queue, type-safe generics |
+| [Streams & Lambdas](./04-java-streams.md) | Functional pipelines, Optional, parallel streams |
+| [Exceptions & I/O](./05-java-exceptions-io.md) | Error handling, file reading/writing, try-with-resources |
+| [Concurrency](./06-java-concurrency.md) | Threads, ExecutorService, CompletableFuture, virtual threads |
+| [Modern Java](./18-modern-java.md) | Records, sealed classes, text blocks, pattern matching, var |
 
 ---
 
@@ -28,8 +28,8 @@ Personal reference for the Java backend ecosystem. Split into three areas — th
 
 | Page | Covers |
 |---|---|
-| [Jakarta EE Fundamentals](./07-jakartaee-fundamentals) | Servlets, Filters, CDI, JAX-RS, Bean Validation |
-| [JPA & Persistence](./08-jpa-persistence) | Entities, relationships, JPQL, transactions, inheritance |
+| [Jakarta EE Fundamentals](./07-jakartaee-fundamentals.md) | Servlets, Filters, CDI, JAX-RS, Bean Validation |
+| [JPA & Persistence](./08-jpa-persistence.md) | Entities, relationships, JPQL, transactions, inheritance |
 
 ---
 
@@ -37,15 +37,15 @@ Personal reference for the Java backend ecosystem. Split into three areas — th
 
 | Page | Covers |
 |---|---|
-| [Spring Core](./09-spring-core) | IoC container, dependency injection, AOP, profiles |
-| [Spring Boot](./10-spring-boot) | Auto-configuration, starters, Actuator, DevTools |
-| [Spring MVC / REST](./11-spring-mvc-rest) | Controllers, DTOs, exception handling, validation, CORS |
-| [Spring Data JPA](./12-spring-data-jpa) | Repositories, derived queries, @Query, pagination, auditing |
-| [Spring Security](./13-spring-security) | JWT authentication, authorization, method security, BCrypt |
-| [Testing](./14-spring-testing) | Unit tests, @WebMvcTest, @DataJpaTest, Testcontainers |
-| [Caching, Events & Transactions](./15-spring-caching-events-transactions) | @Cacheable, ApplicationEvents, @Transactional |
-| [REST Clients](./16-spring-rest-clients) | RestClient, WebClient, @HttpExchange |
-| [Production](./17-spring-production) | Logging, metrics, health checks, Docker, performance |
+| [Spring Core](./09-spring-core.md) | IoC container, dependency injection, AOP, profiles |
+| [Spring Boot](./10-spring-boot.md) | Auto-configuration, starters, Actuator, DevTools |
+| [Spring MVC / REST](./11-spring-mvc-rest.md) | Controllers, DTOs, exception handling, validation, CORS |
+| [Spring Data JPA](./12-spring-data-jpa.md) | Repositories, derived queries, @Query, pagination, auditing |
+| [Spring Security](./13-spring-security.md) | JWT authentication, authorization, method security, BCrypt |
+| [Testing](./14-spring-testing.md) | Unit tests, @WebMvcTest, @DataJpaTest, Testcontainers |
+| [Caching, Events & Transactions](./15-spring-caching-events-transactions.md) | @Cacheable, ApplicationEvents, @Transactional |
+| [REST Clients](./16-spring-rest-clients.md) | RestClient, WebClient, @HttpExchange |
+| [Production](./17-spring-production.md) | Logging, metrics, health checks, Docker, performance |
 
 ---
 
@@ -53,4 +53,4 @@ Personal reference for the Java backend ecosystem. Split into three areas — th
 
 | Page | Covers |
 |---|---|
-| [Design Patterns](./19-design-patterns) | Singleton, Factory, Builder, Decorator, Strategy, Observer |
+| [Design Patterns](./19-design-patterns.md) | Singleton, Factory, Builder, Decorator, Strategy, Observer |
