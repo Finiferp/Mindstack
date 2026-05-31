@@ -31,61 +31,98 @@
 //
 
 const sidebars = {
-  networkSidebar: [
-    {
-      type: 'category',
-      label: 'Network',
-      items: [
-        'networks/Introduction',
-        'networks/Fundamentals',
-        'networks/Switching&LANs',
-        'networks/Routing',
-        'networks/IPServices',
-        'networks/Security',
-      ],
-    },
-  ],
+	networkSidebar: [
+		{
+			type: 'category',
+			label: 'Network',
+			items: [
+				'networks/Introduction',
+				'networks/Fundamentals',
+				'networks/Switching&LANs',
+				'networks/Routing',
+				'networks/IPServices',
+				'networks/Security',
+			],
+		},
+	],
 
-  gitSidebar: [
-    {
-      type: 'category',
-      label: 'Git & Version Control',
-      items: [
-        'git&versioncontrol/Introduction',
-        'git&versioncontrol/GitFundamentals',
-        'git&versioncontrol/Internals',
-        'git&versioncontrol/Branching',
-        'git&versioncontrol/Rebasing',
-        'git&versioncontrol/Collaboration',
-        'git&versioncontrol/Remotes',
-        'git&versioncontrol/Workflows',
-        'git&versioncontrol/Advanced',
-        'git&versioncontrol/Git&DevOps',
-        'git&versioncontrol/Commands',
-      ],
-    },
-  ],
-  linuxSidebar: [
-    {
-      type: 'category',
-      label: 'Linux',
-      items: [
-        'linux/LinuxBasics',
-        'linux/Filesystem',
-        'linux/BasicCommands',
-        'linux/Permissions',
-        'linux/Packages',
-        'linux/Users',
-        'linux/Services',
-        'linux/Networking',
-        'linux/Logs',
-        'linux/Maintenance',
-        'linux/Troubleshooting',
-        'linux/Security',
-        'linux/Advanced'
-      ]
-    }
-  ]
+	gitSideba: [
+		{
+			type: 'category',
+			label: 'Git & Version Control',
+			items: [
+				'git&versioncontrol/Introduction',
+				'git&versioncontrol/GitFundamentals',
+				'git&versioncontrol/Internals',
+				'git&versioncontrol/Branching',
+				'git&versioncontrol/Rebasing',
+				'git&versioncontrol/Collaboration',
+				'git&versioncontrol/Remotes',
+				'git&versioncontrol/Workflows',
+				'git&versioncontrol/Advanced',
+				'git&versioncontrol/Git&DevOps',
+				'git&versioncontrol/Commands',
+			],
+		},
+	],
+	linuxSidebar: [
+		{
+			type: 'category',
+			label: 'Linux',
+			items: [
+				'linux/LinuxBasics',
+				'linux/Filesystem',
+				'linux/BasicCommands',
+				'linux/Permissions',
+				'linux/Packages',
+				'linux/Users',
+				'linux/Services',
+				'linux/Networking',
+				'linux/Logs',
+				'linux/Maintenance',
+				'linux/Troubleshooting',
+				'linux/Security',
+				'linux/Advanced'
+			]
+		}
+	],
+	javaSidebar: [
+		{
+			type: 'category',
+			label: 'Java',
+			items: [
+				'Java/00-course-overview',
+				'Java/01-java-fundamentals',
+				'Java/02-java-oop',
+				'Java/03-java-collections',
+				'Java/04-java-streams',
+				'Java/05-java-exceptions-io',
+				'Java/06-java-concurrency',
+				'Java/07-jakartaee-fundamentals',
+				'Java/08-jpa-persistence',
+				'Java/09-spring-core',
+				'Java/10-spring-boot',
+				'Java/11-spring-mvc-rest',
+				'Java/12-spring-data-jpa',
+				'Java/13-spring-security',
+				'Java/14-spring-testing',
+				'Java/15-spring-caching-events-transactions',
+				'Java/16-spring-rest-clients',
+				'Java/17-spring-production',
+				'Java/18-modern-java',
+				'Java/19-design-patterns'
+			]
+		}
+	],
+	neovimSidebar: [
+		{
+			type: 'category',
+			label: 'Neovim',
+			items: [
+
+			]
+		}
+	],
 };
 
 
