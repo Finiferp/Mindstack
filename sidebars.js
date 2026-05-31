@@ -114,15 +114,6 @@ const sidebars = {
 			]
 		}
 	],
-	neovimSidebar: [
-		{
-			type: 'category',
-			label: 'Neovim',
-			items: [
-
-			]
-		}
-	],
 };
 
 
