@@ -91,7 +91,7 @@ const sidebars = {
 			type: 'category',
 			label: 'Java',
 			items: [
-				'Java/course-overview',
+				'Java/overview',
 				'Java/java-fundamentals',
 				'Java/java-oop',
 				'Java/java-collections',

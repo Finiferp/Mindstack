@@ -93,6 +93,12 @@ const config = {
             docId: 'linux/LinuxBasics',
             position: 'left',
             label: 'Linux' 
+          },
+          {
+            type: 'doc',
+            docId: 'Java/overview',
+            position: 'left',
+            label: 'Java' 
           }
         ],
       },
