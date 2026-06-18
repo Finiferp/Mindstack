@@ -99,6 +99,12 @@ const config = {
             docId: 'Java/overview',
             position: 'left',
             label: 'Java' 
+          },
+          {
+            type: 'doc',
+            docId: 'JavaScript/overview',
+            position: 'left',
+            label: 'JavaScript'
           }
         ],
       },

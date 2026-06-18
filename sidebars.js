@@ -114,6 +114,46 @@ const sidebars = {
 			]
 		}
 	],
+	javascriptSidebar: [
+		{
+			type: 'category',
+			label: 'JavaScript',
+			items: [
+				'JavaScript/overview',
+				'JavaScript/js-fundamentals',
+				'JavaScript/js-arrays-objects',
+				'JavaScript/js-functions-scope',
+				'JavaScript/js-async',
+				'JavaScript/js-classes-modules',
+				'JavaScript/js-errors-regex',
+				'JavaScript/js-dom-web-apis',
+				'JavaScript/js-advanced-patterns',
+				'JavaScript/js-browser-storage-apis',
+				'JavaScript/js-number-date-math',
+				'JavaScript/js-strings-advanced',
+				'JavaScript/js-async-advanced',
+				'JavaScript/nodejs-fundamentals',
+				'JavaScript/nodejs-express',
+				'JavaScript/nodejs-database',
+				'JavaScript/nodejs-auth',
+				'JavaScript/nodejs-testing',
+				'JavaScript/nodejs-advanced',
+				'JavaScript/nodejs-security-deployment',
+				'JavaScript/bun',
+				'JavaScript/angular-fundamentals',
+				'JavaScript/angular-forms-http',
+				'JavaScript/angular-state-rxjs',
+				'JavaScript/angular-routing-advanced',
+				'JavaScript/angular-testing',
+				'JavaScript/vue-fundamentals',
+				'JavaScript/vue-router-pinia',
+				'JavaScript/vue-advanced',
+				'JavaScript/vue-testing',
+				'JavaScript/typescript',
+				'JavaScript/tooling'
+			]
+		}
+	],
 };
 
 
