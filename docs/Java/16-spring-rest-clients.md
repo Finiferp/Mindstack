@@ -1,167 +1,114 @@
 ---
-title: "Spring — Consuming REST APIs"
+title: "REST Clients"
 sidebar_label: "REST Clients"
 sidebar_position: 16
 ---
 
-# Consuming REST APIs in Spring
+# REST Clients
 
-Most backend services don't just serve data — they also consume it from other services. Spring provides several HTTP client abstractions: the modern `RestClient` (Spring 6.1+), the reactive `WebClient`, and the declarative `@HttpExchange` interface. Each suits different scenarios.
+Spring offers several HTTP client abstractions for calling external APIs: the legacy `RestTemplate`, the reactive `WebClient`, the modern `RestClient`, and declarative `@HttpExchange` interfaces.
 
 ---
 
-## RestClient (Spring 6.1+ / Boot 3.2+)
+## RestClient (Modern, Spring 6.1+)
 
-`RestClient` is the modern, fluent, synchronous HTTP client. It replaces the deprecated `RestTemplate`.
-
-### Setup
+`RestClient` is the recommended synchronous HTTP client — combines `RestTemplate`'s simplicity with `WebClient`'s fluent API.
 
 ```java
 @Configuration
 public class RestClientConfig {
 
     @Bean
-    public RestClient githubClient() {
-        return RestClient.builder()
-            .baseUrl("https://api.github.com")
-            .defaultHeader("Accept", "application/vnd.github+json")
-            .defaultHeader("Authorization", "Bearer " + githubToken)
-            .build();
-    }
-
-    @Bean
-    public RestClient paymentClient() {
-        return RestClient.builder()
-            .baseUrl("https://api.stripe.com/v1")
-            .defaultHeader("Authorization", "Bearer " + stripeKey)
+    public RestClient restClient(RestClient.Builder builder) {
+        return builder
+            .baseUrl("https://api.example.com")
+            .defaultHeader("Accept", "application/json")
             .requestInterceptor((request, body, execution) -> {
-                // Add custom logic (logging, retry, etc.)
-                log.info("Calling: {} {}", request.getMethod(), request.getURI());
+                request.getHeaders().add("X-Client-Id", "my-app");
                 return execution.execute(request, body);
             })
+            .requestFactory(clientHttpRequestFactory())
             .build();
     }
+
+    private ClientHttpRequestFactory clientHttpRequestFactory() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        return factory;
+    }
 }
-```
 
-### Making Requests
-
-```java
 @Service
-public class GithubService {
+public class WeatherClient {
+    private final RestClient restClient;
 
-    private final RestClient githubClient;
-
-    public GithubService(RestClient githubClient) {
-        this.githubClient = githubClient;
+    public WeatherClient(RestClient restClient) {
+        this.restClient = restClient;
     }
 
-    // GET — retrieve object
-    public GithubUser getUser(String username) {
-        return githubClient.get()
-            .uri("/users/{username}", username)
+    public WeatherResponse getWeather(String city) {
+        return restClient.get()
+            .uri("/weather?city={city}", city)
             .retrieve()
-            .body(GithubUser.class);
+            .body(WeatherResponse.class);
     }
 
-    // GET — retrieve list
-    public List<GithubRepo> getRepos(String username) {
-        return githubClient.get()
-            .uri("/users/{username}/repos?per_page=100", username)
+    public WeatherResponse getWeatherWithErrorHandling(String city) {
+        return restClient.get()
+            .uri("/weather?city={city}", city)
             .retrieve()
-            .body(new ParameterizedTypeReference<List<GithubRepo>>() {});
+            .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
+                throw new ClientApiException("Client error: " + res.getStatusCode());
+            })
+            .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
+                throw new ServerApiException("Server error: " + res.getStatusCode());
+            })
+            .body(WeatherResponse.class);
     }
 
-    // GET with query params
-    public List<GithubRepo> searchRepos(String query, String language) {
-        return githubClient.get()
-            .uri(uriBuilder -> uriBuilder
-                .path("/search/repositories")
-                .queryParam("q", query + " language:" + language)
-                .queryParam("sort", "stars")
-                .queryParam("order", "desc")
-                .build())
+    public List<WeatherResponse> getMultiple() {
+        return restClient.get()
+            .uri("/weather/batch")
             .retrieve()
-            .body(SearchResult.class)
-            .items();
+            .body(new ParameterizedTypeReference<List<WeatherResponse>>() {});
     }
 
-    // POST — send body
-    public GithubIssue createIssue(String owner, String repo, CreateIssueRequest request) {
-        return githubClient.post()
-            .uri("/repos/{owner}/{repo}/issues", owner, repo)
+    public WeatherResponse postData(WeatherRequest request) {
+        return restClient.post()
+            .uri("/weather")
             .contentType(MediaType.APPLICATION_JSON)
             .body(request)
             .retrieve()
-            .body(GithubIssue.class);
+            .body(WeatherResponse.class);
     }
 
-    // PUT
-    public void updateFile(String owner, String repo, String path, UpdateFileRequest request) {
-        githubClient.put()
-            .uri("/repos/{owner}/{repo}/contents/{path}", owner, repo, path)
-            .body(request)
+    public ResponseEntity<WeatherResponse> getFullResponse(String city) {
+        return restClient.get()
+            .uri("/weather?city={city}", city)
             .retrieve()
-            .toBodilessEntity();
+            .toEntity(WeatherResponse.class);
+        // gives access to .getStatusCode(), .getHeaders(), .getBody()
     }
 
-    // DELETE
-    public void deleteIssue(String owner, String repo, int issueNumber) {
-        githubClient.delete()
-            .uri("/repos/{owner}/{repo}/issues/{number}/lock", owner, repo, issueNumber)
-            .retrieve()
-            .toBodilessEntity();
-    }
-
-    // Access full ResponseEntity (status, headers, body)
-    public ResponseEntity<GithubUser> getUserWithMeta(String username) {
-        return githubClient.get()
-            .uri("/users/{username}", username)
-            .retrieve()
-            .toEntity(GithubUser.class);
+    public void exchange() {
+        WeatherResponse result = restClient.get()
+            .uri("/weather")
+            .exchange((request, response) -> {
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    return response.bodyTo(WeatherResponse.class);
+                }
+                throw new RuntimeException("Failed: " + response.getStatusCode());
+            });
     }
 }
-```
-
-### Error Handling
-
-```java
-@Service
-public class PaymentService {
-
-    private final RestClient paymentClient;
-
-    public ChargeResponse charge(ChargeRequest request) {
-        return paymentClient.post()
-            .uri("/charges")
-            .body(request)
-            .retrieve()
-            .onStatus(HttpStatusCode::is4xxClientError, (req, resp) -> {
-                String body = new String(resp.getBody().readAllBytes());
-                throw new PaymentClientException("Payment rejected: " + body, resp.getStatusCode());
-            })
-            .onStatus(HttpStatusCode::is5xxServerError, (req, resp) -> {
-                throw new PaymentServiceException("Payment service unavailable");
-            })
-            .body(ChargeResponse.class);
-    }
-}
-
-// Or configure globally in the builder
-RestClient.builder()
-    .defaultStatusHandler(HttpStatusCode::isError, (req, resp) -> {
-        throw new HttpClientException(resp.getStatusCode(), "Request failed");
-    })
-    .build();
 ```
 
 ---
 
-## WebClient (Reactive / Non-Blocking)
+## WebClient (Reactive)
 
-`WebClient` is part of Spring WebFlux. It's non-blocking and ideal for high-concurrency I/O, reactive pipelines, or when you need to fire many parallel requests efficiently.
-
-### Setup
+`WebClient` is the reactive, non-blocking HTTP client — part of Spring WebFlux but usable in any Spring app.
 
 ```xml
 <dependency>
@@ -171,161 +118,224 @@ RestClient.builder()
 ```
 
 ```java
-@Bean
-public WebClient weatherClient() {
-    return WebClient.builder()
-        .baseUrl("https://api.openweathermap.org")
-        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(1024 * 1024)) // 1MB
-        .filter(ExchangeFilterFunction.ofRequestProcessor(req -> {
-            log.info("Request: {} {}", req.method(), req.url());
-            return Mono.just(req);
-        }))
-        .build();
-}
-```
-
-### Making Reactive Requests
-
-```java
-@Service
-public class WeatherService {
-
-    private final WebClient weatherClient;
-
-    // Return Mono<T> — a single async result
-    public Mono<WeatherResponse> getCurrentWeather(String city) {
-        return weatherClient.get()
-            .uri(uri -> uri
-                .path("/data/2.5/weather")
-                .queryParam("q", city)
-                .queryParam("appid", apiKey)
-                .queryParam("units", "metric")
-                .build())
-            .retrieve()
-            .onStatus(HttpStatusCode::is4xxClientError,
-                resp -> resp.bodyToMono(String.class)
-                    .map(body -> new WeatherApiException("Client error: " + body)))
-            .bodyToMono(WeatherResponse.class)
-            .timeout(Duration.ofSeconds(5))
-            .retry(3);
-    }
-
-    // Return Flux<T> — a stream of results
-    public Flux<WeatherEvent> streamWeatherUpdates(String city) {
-        return weatherClient.get()
-            .uri("/stream/weather?city={city}", city)
-            .retrieve()
-            .bodyToFlux(WeatherEvent.class);
-    }
-
-    // Parallel requests — zip multiple async calls
-    public Mono<WeatherDashboard> getDashboard(List<String> cities) {
-        List<Mono<WeatherResponse>> requests = cities.stream()
-            .map(this::getCurrentWeather)
-            .toList();
-
-        return Mono.zip(requests, results ->
-            new WeatherDashboard(Arrays.asList(results))
-        );
-    }
-
-    // Block when you need synchronous result (use sparingly)
-    public WeatherResponse getCurrentWeatherBlocking(String city) {
-        return getCurrentWeather(city).block();
-    }
-}
-```
-
----
-
-## @HttpExchange — Declarative HTTP Clients (Spring 6+)
-
-Define your HTTP client as an interface; Spring generates the implementation. Similar to Spring Data repositories but for HTTP.
-
-```java
-// Define the interface
-@HttpExchange(url = "https://api.github.com", accept = "application/vnd.github+json")
-public interface GithubClient {
-
-    @GetExchange("/users/{username}")
-    GithubUser getUser(@PathVariable String username);
-
-    @GetExchange("/users/{username}/repos")
-    List<GithubRepo> getRepos(@PathVariable String username,
-                               @RequestParam int perPage);
-
-    @PostExchange("/repos/{owner}/{repo}/issues")
-    GithubIssue createIssue(@PathVariable String owner,
-                             @PathVariable String repo,
-                             @RequestBody CreateIssueRequest request);
-
-    @DeleteExchange("/repos/{owner}/{repo}/issues/{number}/lock")
-    void unlockIssue(@PathVariable String owner,
-                     @PathVariable String repo,
-                     @PathVariable int number);
-}
-```
-
-```java
-// Register as a Spring bean
 @Configuration
-public class GithubClientConfig {
+public class WebClientConfig {
 
     @Bean
-    public GithubClient githubClient() {
-        RestClient restClient = RestClient.builder()
-            .baseUrl("https://api.github.com")
-            .defaultHeader("Authorization", "Bearer " + token)
+    public WebClient webClient(WebClient.Builder builder) {
+        HttpClient httpClient = HttpClient.create()
+            .responseTimeout(Duration.ofSeconds(10))
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
+
+        return builder
+            .baseUrl("https://api.example.com")
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .filter(logRequest())
             .build();
+    }
 
-        RestClientAdapter adapter = RestClientAdapter.create(restClient);
-        HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
-
-        return factory.createClient(GithubClient.class);
+    private ExchangeFilterFunction logRequest() {
+        return ExchangeFilterFunction.ofRequestProcessor(request -> {
+            log.info("Request: {} {}", request.method(), request.url());
+            return Mono.just(request);
+        });
     }
 }
 
-// Inject and use like any Spring bean
 @Service
-public class GithubService {
+public class UserApiClient {
+    private final WebClient webClient;
 
-    @Autowired
-    private GithubClient githubClient;
+    public UserApiClient(WebClient webClient) {
+        this.webClient = webClient;
+    }
 
-    public GithubUser fetchUser(String username) {
-        return githubClient.getUser(username);
+    // Returns Mono<T> — 0 or 1 result, async
+    public Mono<User> getUser(Long id) {
+        return webClient.get()
+            .uri("/users/{id}", id)
+            .retrieve()
+            .bodyToMono(User.class);
+    }
+
+    // Returns Flux<T> — 0 to N results, async stream
+    public Flux<User> getAllUsers() {
+        return webClient.get()
+            .uri("/users")
+            .retrieve()
+            .bodyToFlux(User.class);
+    }
+
+    public Mono<User> createUser(CreateUserRequest request) {
+        return webClient.post()
+            .uri("/users")
+            .bodyValue(request)
+            .retrieve()
+            .bodyToMono(User.class);
+    }
+
+    // Error handling
+    public Mono<User> getUserWithErrorHandling(Long id) {
+        return webClient.get()
+            .uri("/users/{id}", id)
+            .retrieve()
+            .onStatus(HttpStatusCode::is4xxClientError, response ->
+                Mono.error(new UserNotFoundException("User not found: " + id)))
+            .onStatus(HttpStatusCode::is5xxServerError, response ->
+                Mono.error(new ExternalServiceException("Upstream error")))
+            .bodyToMono(User.class);
+    }
+
+    // Timeout
+    public Mono<User> getUserWithTimeout(Long id) {
+        return webClient.get()
+            .uri("/users/{id}", id)
+            .retrieve()
+            .bodyToMono(User.class)
+            .timeout(Duration.ofSeconds(5));
+    }
+
+    // Retry
+    public Mono<User> getUserWithRetry(Long id) {
+        return webClient.get()
+            .uri("/users/{id}", id)
+            .retrieve()
+            .bodyToMono(User.class)
+            .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+                .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable));
+    }
+
+    // Combine multiple async calls
+    public Mono<UserProfile> getFullProfile(Long userId) {
+        Mono<User>   userMono  = getUser(userId);
+        Mono<Orders> orderMono = getOrders(userId);
+
+        return Mono.zip(userMono, orderMono)
+            .map(tuple -> new UserProfile(tuple.getT1(), tuple.getT2()));
+    }
+
+    // Blocking (only at the very edge — controllers, tests — never in reactive chains)
+    public User getUserBlocking(Long id) {
+        return getUser(id).block(Duration.ofSeconds(5));
+    }
+}
+
+// Calling from a reactive controller (non-blocking end-to-end)
+@RestController
+public class UserController {
+    private final UserApiClient client;
+
+    @GetMapping("/users/{id}")
+    public Mono<User> getUser(@PathVariable Long id) {
+        return client.getUser(id);   // non-blocking all the way through
+    }
+
+    @GetMapping(value = "/users/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<User> streamUsers() {
+        return client.getAllUsers();   // streams results as Server-Sent Events
     }
 }
 ```
 
 ---
 
-## RestTemplate (Legacy)
+## @HttpExchange (Declarative Clients, Spring 6+)
 
-`RestTemplate` is the older synchronous client. You'll encounter it in legacy codebases. It's deprecated since Spring 5.0 in favor of `RestClient` / `WebClient`.
+Define an interface; Spring generates the implementation — similar to Feign or Retrofit.
 
 ```java
-@Bean
-public RestTemplate restTemplate(RestTemplateBuilder builder) {
-    return builder
-        .rootUri("https://api.example.com")
-        .connectTimeout(Duration.ofSeconds(5))
-        .readTimeout(Duration.ofSeconds(10))
-        .build();
+public interface GitHubClient {
+
+    @GetExchange("/users/{username}")
+    GitHubUser getUser(@PathVariable String username);
+
+    @GetExchange("/users/{username}/repos")
+    List<Repository> getRepos(@PathVariable String username,
+                               @RequestParam(defaultValue = "10") int perPage);
+
+    @PostExchange("/repos/{owner}/{repo}/issues")
+    Issue createIssue(@PathVariable String owner, @PathVariable String repo,
+                       @RequestBody CreateIssueRequest request);
+
+    @PutExchange("/user/starred/{owner}/{repo}")
+    void starRepo(@PathVariable String owner, @PathVariable String repo);
+
+    @DeleteExchange("/user/starred/{owner}/{repo}")
+    void unstarRepo(@PathVariable String owner, @PathVariable String repo);
+
+    @GetExchange("/search/repositories")
+    SearchResult searchRepos(@RequestParam String q, @RequestParam(name = "sort") String sortBy);
+}
+
+// Register as a bean — backed by RestClient
+@Configuration
+public class GitHubClientConfig {
+
+    @Bean
+    public GitHubClient gitHubClient() {
+        RestClient restClient = RestClient.builder()
+            .baseUrl("https://api.github.com")
+            .defaultHeader("Authorization", "Bearer " + githubToken)
+            .build();
+
+        HttpServiceProxyFactory factory = HttpServiceProxyFactory
+            .builderFor(RestClientAdapter.create(restClient))
+            .build();
+
+        return factory.createClient(GitHubClient.class);
+    }
+
+    // Reactive version — backed by WebClient
+    @Bean
+    public GitHubReactiveClient gitHubReactiveClient(WebClient webClient) {
+        HttpServiceProxyFactory factory = HttpServiceProxyFactory
+            .builderFor(WebClientAdapter.create(webClient))
+            .build();
+        return factory.createClient(GitHubReactiveClient.class);
+    }
 }
 
 // Usage
 @Service
-public class LegacyService {
+public class GitHubService {
+    private final GitHubClient gitHubClient;
 
+    public GitHubService(GitHubClient gitHubClient) {
+        this.gitHubClient = gitHubClient;
+    }
+
+    public GitHubUser fetchUser(String username) {
+        return gitHubClient.getUser(username);   // clean, type-safe, no boilerplate
+    }
+}
+```
+
+---
+
+## RestTemplate (Legacy, still common in older codebases)
+
+```java
+@Configuration
+public class RestTemplateConfig {
+    @Bean
+    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        return builder
+            .setConnectTimeout(Duration.ofSeconds(5))
+            .setReadTimeout(Duration.ofSeconds(10))
+            .build();
+    }
+}
+
+@Service
+public class LegacyApiClient {
     private final RestTemplate restTemplate;
 
     public User getUser(Long id) {
         return restTemplate.getForObject("/users/{id}", User.class, id);
     }
 
-    public ResponseEntity<User> getUserWithStatus(Long id) {
+    public ResponseEntity<User> getUserEntity(Long id) {
         return restTemplate.getForEntity("/users/{id}", User.class, id);
     }
 
@@ -341,76 +351,111 @@ public class LegacyService {
         restTemplate.delete("/users/{id}", id);
     }
 
-    // Generic — for parameterized types like List<T>
+    // Custom headers
+    public User getUserWithAuth(Long id, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<User> response = restTemplate.exchange(
+            "/users/{id}", HttpMethod.GET, entity, User.class, id);
+        return response.getBody();
+    }
+
+    // Generic type response (List<User>)
     public List<User> getAllUsers() {
-        return restTemplate.exchange(
-            "/users",
-            HttpMethod.GET,
-            null,
-            new ParameterizedTypeReference<List<User>>() {}
-        ).getBody();
+        ResponseEntity<List<User>> response = restTemplate.exchange(
+            "/users", HttpMethod.GET, null,
+            new ParameterizedTypeReference<List<User>>() {});
+        return response.getBody();
     }
 }
+// NOTE: RestTemplate is in maintenance mode — prefer RestClient or WebClient for new code
 ```
-
-**Tips:**
-- Migrate from `RestTemplate` to `RestClient` — same synchronous model, cleaner API.
-- Use `WebClient` for reactive applications or when making many parallel HTTP calls.
-- Use `@HttpExchange` for clean, testable HTTP client interfaces — it's the Spring equivalent of Feign.
-- Always set timeouts — an unresponsive external service will hang your threads indefinitely without them.
-- Add retry logic with exponential backoff for transient failures.
 
 ---
 
-## Retry and Resilience
+## Resilience Patterns
 
 ```xml
 <dependency>
-    <groupId>org.springframework.retry</groupId>
-    <artifactId>spring-retry</artifactId>
+    <groupId>io.github.resilience4j</groupId>
+    <artifactId>resilience4j-spring-boot3</artifactId>
 </dependency>
 ```
 
 ```java
-@SpringBootApplication
-@EnableRetry
-public class MyApp {}
-
 @Service
-public class ExternalApiService {
+public class ResilientApiClient {
+    private final RestClient restClient;
 
-    @Retryable(
-        retryFor = {HttpServerErrorException.class, ResourceAccessException.class},
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)  // 1s, 2s, 4s
-    )
-    public ApiResponse callExternalApi(String endpoint) {
-        return restClient.get().uri(endpoint).retrieve().body(ApiResponse.class);
+    // Circuit breaker — stop calling a failing service temporarily
+    @CircuitBreaker(name = "weatherApi", fallbackMethod = "getWeatherFallback")
+    public WeatherResponse getWeather(String city) {
+        return restClient.get().uri("/weather?city={city}", city).retrieve().body(WeatherResponse.class);
+    }
+    public WeatherResponse getWeatherFallback(String city, Exception ex) {
+        return WeatherResponse.unavailable();
     }
 
-    @Recover
-    public ApiResponse fallback(HttpServerErrorException ex, String endpoint) {
-        // Called when all retries are exhausted
-        log.error("All retries failed for {}: {}", endpoint, ex.getMessage());
-        return ApiResponse.empty();
+    // Retry with backoff
+    @Retry(name = "weatherApi", fallbackMethod = "getWeatherFallback")
+    public WeatherResponse getWeatherWithRetry(String city) {
+        return restClient.get().uri("/weather?city={city}", city).retrieve().body(WeatherResponse.class);
+    }
+
+    // Rate limiter
+    @RateLimiter(name = "weatherApi")
+    public WeatherResponse getWeatherRateLimited(String city) {
+        return restClient.get().uri("/weather?city={city}", city).retrieve().body(WeatherResponse.class);
+    }
+
+    // Bulkhead — limit concurrent calls
+    @Bulkhead(name = "weatherApi")
+    public WeatherResponse getWeatherBulkheaded(String city) {
+        return restClient.get().uri("/weather?city={city}", city).retrieve().body(WeatherResponse.class);
+    }
+
+    // Time limiter (for reactive/async methods)
+    @TimeLimiter(name = "weatherApi")
+    public CompletableFuture<WeatherResponse> getWeatherAsync(String city) {
+        return CompletableFuture.supplyAsync(() ->
+            restClient.get().uri("/weather?city={city}", city).retrieve().body(WeatherResponse.class));
     }
 }
+```
+
+```yaml
+resilience4j:
+  circuitbreaker:
+    instances:
+      weatherApi:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      weatherApi:
+        max-attempts: 3
+        wait-duration: 1s
+        exponential-backoff-multiplier: 2
+  ratelimiter:
+    instances:
+      weatherApi:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 0
 ```
 
 ---
 
 ## Summary
 
-Spring provides a full toolkit for consuming HTTP APIs:
-
-- **RestClient** — modern, fluent synchronous client for most use cases.
-- **WebClient** — reactive, non-blocking client for high-concurrency or reactive pipelines.
-- **@HttpExchange** — declarative interface-based client; clean and testable.
-- **RestTemplate** — legacy client, still working, migrate to RestClient when possible.
-
-**Key Takeaways:**
-- Use `RestClient` for new synchronous code — it's clean and modern.
-- Use `WebClient` in reactive apps or when parallelizing many outbound calls.
-- Always configure timeouts — the default is to wait forever.
-- Use `@HttpExchange` interfaces when you have multiple methods calling the same API — it centralizes the contract.
-- Add retry logic for transient errors from external services.
+- `RestClient` (Spring 6.1+) is the recommended synchronous HTTP client for new code — fluent API, simple, blocking.
+- `WebClient` is for reactive/non-blocking pipelines — use `Mono`/`Flux`, never call `.block()` except at the application's outer edge.
+- `@HttpExchange` interfaces eliminate boilerplate — declare the contract, Spring generates the implementation.
+- `RestTemplate` is in maintenance mode — only use it when maintaining existing code that already depends on it.
+- Always configure connect and read timeouts explicitly — default timeouts are often infinite, risking hung threads.
+- Use Resilience4j's `@CircuitBreaker`, `@Retry`, and `@RateLimiter` to harden calls to unreliable external services.
+- Always provide a fallback method for circuit breakers — a service that's down shouldn't cascade failures through your whole app.

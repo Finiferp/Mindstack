@@ -1,128 +1,28 @@
 ---
-title: "Spring — Caching, Events & Transactions"
-sidebar_label: "Caching, Events & Transactions"
+title: "Caching, Events & Transactions"
+sidebar_label: "Caching & Transactions"
 sidebar_position: 15
 ---
 
-# Spring — Caching, Events & Transactions
+# Caching, Events & Transactions
 
-Beyond CRUD, production Spring applications need caching to reduce database load, events to decouple components, and careful transaction management to ensure data consistency. These three cross-cutting capabilities are handled declaratively with annotations.
+Deep dive into Spring's caching abstraction, the application event system, and the nuances of `@Transactional` that trip up most developers.
 
 ---
 
-## Caching
-
-Spring's caching abstraction sits on top of any cache provider (Caffeine, Redis, EhCache). You annotate methods; Spring handles storing and retrieving results.
-
-### Setup
+## Caching Abstraction
 
 ```xml
-<!-- In-memory Caffeine cache -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+<!-- Plus a cache provider: caffeine, redis, ehcache, or the default ConcurrentHashMap -->
 <dependency>
     <groupId>com.github.ben-manes.caffeine</groupId>
     <artifactId>caffeine</artifactId>
 </dependency>
-
-<!-- Or Redis for distributed caching -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-redis</artifactId>
-</dependency>
 ```
-
-```java
-@SpringBootApplication
-@EnableCaching
-public class MyApp {}
-```
-
-```yaml
-# Caffeine (in-memory)
-spring:
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=10m
-
-# Redis (distributed)
-spring:
-  cache:
-    type: redis
-  redis:
-    host: localhost
-    port: 6379
-  data:
-    redis:
-      time-to-live: 600000   # 10 minutes in ms
-```
-
-### @Cacheable
-
-```java
-@Service
-public class ProductService {
-
-    // Cache result — next call with same id returns cached value, skips DB
-    @Cacheable(value = "products", key = "#id")
-    public ProductResponse findById(Long id) {
-        // This method body only executes on cache miss
-        return productRepository.findById(id)
-            .map(productMapper::toResponse)
-            .orElseThrow(() -> new ResourceNotFoundException("Product", id));
-    }
-
-    // Conditional caching
-    @Cacheable(value = "products", key = "#id", condition = "#id > 0")
-    public ProductResponse findByIdConditional(Long id) { ... }
-
-    // Cache unless the result is null
-    @Cacheable(value = "products", key = "#id", unless = "#result == null")
-    public ProductResponse findByIdNullable(Long id) { ... }
-
-    // Complex key using SpEL
-    @Cacheable(value = "products", key = "#category + '_' + #page + '_' + #size")
-    public Page<ProductResponse> findByCategory(String category, int page, int size) { ... }
-}
-```
-
-### @CachePut and @CacheEvict
-
-```java
-@Service
-public class ProductService {
-
-    // Update cache after writing (always executes the method, then updates cache)
-    @CachePut(value = "products", key = "#result.id")
-    public ProductResponse update(Long id, UpdateProductRequest request) {
-        Product product = productRepository.findById(id).orElseThrow();
-        productMapper.update(product, request);
-        return productMapper.toResponse(productRepository.save(product));
-    }
-
-    // Remove from cache when deleted
-    @CacheEvict(value = "products", key = "#id")
-    public void delete(Long id) {
-        productRepository.deleteById(id);
-    }
-
-    // Clear entire cache (e.g., after bulk update)
-    @CacheEvict(value = "products", allEntries = true)
-    public void clearCache() {}
-
-    // Multiple cache operations
-    @Caching(
-        evict = {
-            @CacheEvict(value = "products", key = "#id"),
-            @CacheEvict(value = "product-lists", allEntries = true)
-        }
-    )
-    public void deleteAndClearList(Long id) {
-        productRepository.deleteById(id);
-    }
-}
-```
-
-### Custom Cache Configuration
 
 ```java
 @Configuration
@@ -131,154 +31,216 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager manager = new CaffeineCacheManager();
+        CaffeineCacheManager manager = new CaffeineCacheManager("users", "products", "orders");
         manager.setCaffeine(Caffeine.newBuilder()
-            .maximumSize(500)
+            .maximumSize(1000)
             .expireAfterWrite(Duration.ofMinutes(10))
-            .recordStats());   // enable hit/miss stats
+            .recordStats());
         return manager;
     }
-
-    // Different TTLs per cache (Redis)
-    @Bean
-    public RedisCacheManager redisCacheManager(RedisConnectionFactory factory) {
-        Map<String, RedisCacheConfiguration> configs = Map.of(
-            "products", RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(30)),
-            "users", RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(5)),
-            "categories", RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(24))
-        );
-
-        return RedisCacheManager.builder(factory)
-            .withInitialCacheConfigurations(configs)
-            .build();
-    }
 }
 ```
 
-**Tips:**
-- Cache only read-heavy, computation-expensive, or slow data (DB queries, external API calls).
-- Always evict or update the cache when the underlying data changes.
-- Use Redis for distributed cache (multiple app instances sharing state); use Caffeine for single-instance in-memory cache.
-- Self-invocation bypasses caching (same as AOP) — inject the service into itself or use `ApplicationContext.getBean()` as a workaround.
-
----
-
-## Application Events
-
-Spring's event system decouples components. A service publishes an event; listeners react independently. Neither knows about the other.
-
-### Built-in Events
-
-```java
-@Component
-public class AppStartupListener implements ApplicationListener<ApplicationReadyEvent> {
-    @Override
-    public void onApplicationEvent(ApplicationReadyEvent event) {
-        System.out.println("Application fully started and ready to serve requests!");
-    }
-}
-
-// Or with annotation style
-@EventListener(ApplicationReadyEvent.class)
-public void onReady() {
-    System.out.println("Ready!");
-}
-
-@EventListener(ContextClosedEvent.class)
-public void onShutdown() {
-    System.out.println("Shutting down gracefully...");
-}
-```
-
-### Custom Events
-
-```java
-// Define the event — extend ApplicationEvent or just use a POJO (Spring 4.2+)
-public record UserCreatedEvent(Long userId, String email, LocalDateTime occurredAt) {}
-
-public record OrderPlacedEvent(Long orderId, Long userId, BigDecimal total) {}
-```
-
-### Publishing Events
+### Cache Annotations
 
 ```java
 @Service
 public class UserService {
 
-    private final ApplicationEventPublisher eventPublisher;
-    private final UserRepository userRepository;
-
-    public UserService(ApplicationEventPublisher eventPublisher, UserRepository userRepository) {
-        this.eventPublisher = eventPublisher;
-        this.userRepository = userRepository;
+    // @Cacheable — cache the return value, key by arguments
+    @Cacheable(value = "users", key = "#id")
+    public User findById(Long id) {
+        System.out.println("Fetching from DB...");   // only prints on cache miss
+        return userRepository.findById(id).orElseThrow();
     }
 
-    @Transactional
-    public UserResponse create(CreateUserRequest request) {
-        User user = userRepository.save(new User(request.name(), request.email()));
+    // Conditional caching
+    @Cacheable(value = "users", key = "#id", condition = "#id > 0", unless = "#result == null")
+    public User findByIdConditional(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
 
-        // Publish event — listeners react asynchronously or synchronously
-        eventPublisher.publishEvent(new UserCreatedEvent(
-            user.getId(), user.getEmail(), LocalDateTime.now()
-        ));
+    // Composite key from multiple parameters
+    @Cacheable(value = "userSearch", key = "#name + '-' + #role")
+    public List<User> search(String name, Role role) {
+        return userRepository.findByNameAndRole(name, role);
+    }
 
-        return userMapper.toResponse(user);
+    // Custom key generator
+    @Cacheable(value = "users", keyGenerator = "customKeyGenerator")
+    public User findByIdCustomKey(Long id) { return null; }
+
+    // @CachePut — ALWAYS execute method, update cache with result (for writes)
+    @CachePut(value = "users", key = "#user.id")
+    public User update(User user) {
+        return userRepository.save(user);
+    }
+
+    // @CacheEvict — remove from cache
+    @CacheEvict(value = "users", key = "#id")
+    public void delete(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    // Evict all entries
+    @CacheEvict(value = "users", allEntries = true)
+    public void clearAllUserCache() { }
+
+    // Evict before method execution (vs after, the default)
+    @CacheEvict(value = "users", key = "#id", beforeInvocation = true)
+    public void deleteEvictFirst(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    // Combine multiple cache operations
+    @Caching(
+        put   = { @CachePut(value = "users", key = "#user.id") },
+        evict = { @CacheEvict(value = "userSearch", allEntries = true) }
+    )
+    public User updateAndClearSearchCache(User user) {
+        return userRepository.save(user);
     }
 }
-```
 
-### Listening to Events
-
-```java
 @Component
-public class UserEventListeners {
-
-    private final EmailService emailService;
-    private final AuditService auditService;
-    private final NotificationService notificationService;
-
-    // Synchronous listener (same thread, same transaction if @Transactional)
-    @EventListener
-    public void onUserCreated(UserCreatedEvent event) {
-        auditService.log("USER_CREATED", event.userId());
-    }
-
-    // Async listener — runs in a separate thread
-    @EventListener
-    @Async
-    public void sendWelcomeEmail(UserCreatedEvent event) {
-        emailService.sendWelcomeEmail(event.email());
-    }
-
-    // Transactional listener — runs AFTER the originating transaction commits
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void notifyAfterCommit(UserCreatedEvent event) {
-        // Safe: user is guaranteed to be in the DB at this point
-        notificationService.notifyNewUser(event.userId());
-    }
-
-    // Conditional listener
-    @EventListener(condition = "#event.total > 1000")
-    public void onLargeOrder(OrderPlacedEvent event) {
-        notificationService.alertSalesTeam(event.orderId());
+public class CustomKeyGenerator implements KeyGenerator {
+    @Override
+    public Object generate(Object target, Method method, Object... params) {
+        return target.getClass().getSimpleName() + "_" + method.getName() + "_" +
+               Arrays.stream(params).map(String::valueOf).collect(Collectors.joining("_"));
     }
 }
 ```
 
-### Enabling Async Events
+### Redis Cache Configuration
 
 ```java
 @Configuration
-@EnableAsync
-public class AsyncConfig {
+@EnableCaching
+public class RedisCacheConfig {
 
     @Bean
-    public Executor asyncExecutor() {
+    public CacheManager cacheManager(RedisConnectionFactory factory) {
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+            .entryTtl(Duration.ofMinutes(10))
+            .serializeKeysWith(RedisSerializationContext.SerializationPair
+                .fromSerializer(new StringRedisSerializer()))
+            .serializeValuesWith(RedisSerializationContext.SerializationPair
+                .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+            .disableCachingNullValues();
+
+        Map<String, RedisCacheConfiguration> cacheConfigs = Map.of(
+            "users", config.entryTtl(Duration.ofMinutes(30)),
+            "products", config.entryTtl(Duration.ofHours(1))
+        );
+
+        return RedisCacheManager.builder(factory)
+            .cacheDefaults(config)
+            .withInitialCacheConfigurations(cacheConfigs)
+            .build();
+    }
+}
+```
+
+### Manual Cache Access
+
+```java
+@Service
+public class ManualCacheService {
+    private final CacheManager cacheManager;
+
+    public ManualCacheService(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
+    public void manualOps() {
+        Cache cache = cacheManager.getCache("users");
+        cache.put("key", value);
+        Cache.ValueWrapper wrapper = cache.get("key");
+        User user = cache.get("key", User.class);
+        cache.evict("key");
+        cache.clear();
+    }
+}
+```
+
+---
+
+## Application Events Deep Dive
+
+```java
+// Domain event
+public record OrderPlacedEvent(Long orderId, Long userId, BigDecimal total, Instant occurredAt) {
+    public OrderPlacedEvent(Long orderId, Long userId, BigDecimal total) {
+        this(orderId, userId, total, Instant.now());
+    }
+}
+
+@Service
+public class OrderService {
+    private final ApplicationEventPublisher publisher;
+    private final OrderRepository orderRepository;
+
+    @Transactional
+    public Order placeOrder(CreateOrderRequest request) {
+        Order order = orderRepository.save(buildOrder(request));
+        publisher.publishEvent(new OrderPlacedEvent(order.getId(), order.getUserId(), order.getTotal()));
+        return order;
+        // If an exception is thrown AFTER publishEvent but the transaction rolls back,
+        // a regular @EventListener would have ALREADY fired — even though the order was never saved!
+    }
+}
+
+// PROBLEM: regular @EventListener fires synchronously, even if transaction later rolls back
+@Component
+public class InventoryListener {
+    @EventListener
+    public void onOrderPlaced(OrderPlacedEvent event) {
+        // This runs even if the surrounding transaction eventually rolls back!
+        inventoryService.reserve(event.orderId());
+    }
+}
+
+// SOLUTION: @TransactionalEventListener — only fires after commit
+@Component
+public class InventoryListener {
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrderPlaced(OrderPlacedEvent event) {
+        // Only runs if the transaction actually committed successfully
+        inventoryService.reserve(event.orderId());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_ROLLBACK)
+    public void onOrderFailed(OrderPlacedEvent event) {
+        // Compensating action if the order transaction rolled back
+        log.warn("Order {} failed, releasing any holds", event.orderId());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+    public void beforeCommit(OrderPlacedEvent event) {
+        // Last chance to do something (and still roll back if this throws)
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
+    public void afterCompletion(OrderPlacedEvent event) {
+        // Runs after commit OR rollback — good for cleanup/logging
+    }
+}
+
+// If there's NO active transaction when the event is published,
+// @TransactionalEventListener does NOT fire by default. Use fallbackExecution = true to change this:
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+public void onEventEvenWithoutTransaction(OrderPlacedEvent event) { }
+
+// Async event listener — runs on a separate thread
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+    @Bean
+    public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
+        executor.setCorePoolSize(4);
         executor.setMaxPoolSize(10);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("async-event-");
@@ -286,197 +248,179 @@ public class AsyncConfig {
         return executor;
     }
 }
-```
 
-**Tips:**
-- Use `@TransactionalEventListener(phase = AFTER_COMMIT)` when the listener depends on committed data (sending email, calling external APIs).
-- `@Async` event listeners never block the publisher — ideal for notifications, emails, analytics.
-- Events decouple your domain (UserService has no reference to EmailService).
-- Be careful with exceptions in async listeners — they don't propagate to the caller; use an `AsyncUncaughtExceptionHandler`.
+@Component
+public class EmailListener {
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void sendConfirmationEmail(OrderPlacedEvent event) {
+        // Runs asynchronously AFTER the order transaction commits
+        emailService.sendOrderConfirmation(event.orderId());
+    }
+}
+```
 
 ---
 
-## Transaction Management
-
-Spring's `@Transactional` wraps method execution in a database transaction.
-
-### Basics
+## @Transactional Deep Dive
 
 ```java
 @Service
-@Transactional   // default transaction on all methods
-public class OrderService {
+public class TransferService {
 
-    private final OrderRepository orderRepository;
-    private final InventoryService inventoryService;
-    private final PaymentService paymentService;
+    // Basic usage — default propagation REQUIRED, default isolation from DB
+    @Transactional
+    public void transfer(Long fromId, Long toId, BigDecimal amount) {
+        Account from = accountRepo.findById(fromId).orElseThrow();
+        Account to   = accountRepo.findById(toId).orElseThrow();
 
-    @Transactional   // can also annotate per method
-    public Order placeOrder(PlaceOrderRequest request) {
-        // All operations in one transaction — either all succeed or all roll back
-        inventoryService.reserve(request.items());
-        Order order = orderRepository.save(new Order(request));
-        paymentService.charge(request.paymentDetails(), order.getTotal());
-        return order;
+        from.withdraw(amount);
+        to.deposit(amount);
+        // accountRepo.save() not even needed — managed entities flush automatically
+        // Exception anywhere here → entire transaction rolls back
     }
 
-    @Transactional(readOnly = true)   // hint to DB: skip dirty checking, enable read replicas
-    public List<Order> findByUser(Long userId) {
-        return orderRepository.findByUserId(userId);
+    // Read-only optimization — hint to DB driver, prevents accidental writes, can improve performance
+    @Transactional(readOnly = true)
+    public List<Account> findAll() {
+        return accountRepo.findAll();
     }
+
+    // Custom rollback rules
+    @Transactional(rollbackFor = Exception.class)               // rollback on checked exceptions too (default: only unchecked)
+    public void riskyOperation() throws IOException { }
+
+    @Transactional(noRollbackFor = ValidationException.class)   // don't rollback for this specific exception
+    public void operationWithSoftFailure() { }
+
+    // Timeout
+    @Transactional(timeout = 10)   // seconds
+    public void longRunningOperation() { }
+
+    // Isolation levels
+    @Transactional(isolation = Isolation.READ_COMMITTED)    // default for most DBs
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional(isolation = Isolation.SERIALIZABLE)       // strictest, lowest concurrency
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)   // dirty reads possible
+    public void isolatedOperation() { }
 }
 ```
 
-### Propagation
-
-What happens when a transactional method calls another transactional method:
+### Propagation Types
 
 ```java
 @Service
-public class OrderService {
+public class AuditService {
 
-    @Transactional(propagation = Propagation.REQUIRED)  // default
-    public void placeOrder(PlaceOrderRequest request) {
-        // Uses existing transaction if one exists, creates new if none
-        processPayment(request);   // joins this transaction
-        saveOrder(request);
-    }
+    // REQUIRED (default) — join existing transaction, or create new one if none exists
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void normalOperation() { }
 
+    // REQUIRES_NEW — ALWAYS starts a new transaction, suspends any existing one
+    // Use for: audit logs that should persist even if the calling transaction rolls back
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void auditLog(String action) {
-        // Always creates a NEW transaction, suspending the current one
-        // Committed independently — even if outer transaction rolls back
-        auditRepository.save(new AuditEntry(action));
+    public void auditLog(String message) {
+        auditRepository.save(new AuditEntry(message));
+        // This commits independently — even if the caller's transaction later fails
     }
 
+    // SUPPORTS — join if a transaction exists, otherwise run non-transactionally
+    @Transactional(propagation = Propagation.SUPPORTS)
+    public void flexibleOperation() { }
+
+    // NOT_SUPPORTED — suspend any existing transaction, run without one
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public Report generateReport() {
-        // Runs WITHOUT a transaction — for read-only operations where
-        // transaction overhead isn't needed
-        return reportBuilder.build();
-    }
+    public void nonTransactionalOperation() { }
 
+    // MANDATORY — must be called within an existing transaction, throws if none
     @Transactional(propagation = Propagation.MANDATORY)
-    public void mustRunInsideTransaction() {
-        // Throws if no existing transaction — caller MUST start one
-    }
+    public void mustHaveTransaction() { }
 
+    // NEVER — throws if called within a transaction
     @Transactional(propagation = Propagation.NEVER)
-    public void mustNotRunInTransaction() {
-        // Throws if there IS a transaction — for non-transactional operations
-    }
+    public void mustNotHaveTransaction() { }
+
+    // NESTED — creates a savepoint; rollback only undoes work since the savepoint
+    @Transactional(propagation = Propagation.NESTED)
+    public void nestedOperation() { }
 }
 ```
 
-### Isolation Levels
-
-Control how concurrent transactions see each other's changes:
+### Common @Transactional Pitfalls
 
 ```java
-@Transactional(isolation = Isolation.READ_COMMITTED)   // default for most DBs
-public void readData() { ... }
-
-@Transactional(isolation = Isolation.REPEATABLE_READ)
-public void consistentRead() {
-    // Same SELECT returns same rows even if another transaction commits between reads
-}
-
-@Transactional(isolation = Isolation.SERIALIZABLE)
-public void fullyIsolated() {
-    // Highest isolation — prevents all anomalies, but slowest
-}
-```
-
-| Level              | Dirty Read | Non-Repeatable Read | Phantom Read |
-|--------------------|------------|----------------------|--------------|
-| READ_UNCOMMITTED   | Possible   | Possible             | Possible     |
-| READ_COMMITTED     | Prevented  | Possible             | Possible     |
-| REPEATABLE_READ    | Prevented  | Prevented            | Possible     |
-| SERIALIZABLE       | Prevented  | Prevented            | Prevented    |
-
-### Rollback Behavior
-
-```java
-// By default, Spring rolls back on RuntimeException and Error only
-// Checked exceptions do NOT trigger rollback by default
-
-@Transactional(rollbackFor = Exception.class)   // roll back on ANY exception
-public void riskyOperation() throws IOException { ... }
-
-@Transactional(noRollbackFor = BusinessWarningException.class)
-public void operationWithWarnings() { ... }
-
-// Programmatic rollback
-@Transactional
-public void conditionalRollback() {
-    saveData();
-    if (validationFails()) {
-        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-        // Transaction will roll back when method returns
-    }
-}
-```
-
-### Common Transaction Pitfalls
-
-```java
-// PITFALL 1: Self-invocation bypasses @Transactional (same as AOP)
+// PITFALL 1: Self-invocation bypasses the proxy — @Transactional doesn't apply!
 @Service
 public class OrderService {
-
-    public void outerMethod() {
-        innerMethod();  // @Transactional on innerMethod has NO effect here!
+    public void placeOrder() {
+        this.saveOrder();   // WRONG — calling through 'this' skips the Spring proxy
     }
 
     @Transactional
-    public void innerMethod() { ... }
+    public void saveOrder() { /* transaction NOT actually applied when called above */ }
 }
+// FIX: move saveOrder() to a different bean, or inject self via ApplicationContext
 
-// FIX: inject self or restructure
-@Service
-public class OrderService {
-
-    @Autowired
-    private OrderService self;
-
-    public void outerMethod() {
-        self.innerMethod();  // goes through the proxy — @Transactional fires
-    }
-
-    @Transactional
-    public void innerMethod() { ... }
-}
-
-// PITFALL 2: @Transactional on private methods — Spring can't proxy them
-// FIX: methods must be public (or at least package-protected with CGLIB)
-
-// PITFALL 3: Catching exceptions silently
+// PITFALL 2: @Transactional on private methods doesn't work — proxies can't intercept private methods
 @Transactional
-public void saveData() {
+private void thisWontWork() { }   // annotation silently ignored
+
+// PITFALL 3: Catching exceptions inside the method prevents rollback
+@Transactional
+public void brokenErrorHandling() {
     try {
-        repository.save(entity);
+        riskyOperation();
     } catch (Exception e) {
-        log.error("Failed", e);
-        // Transaction does NOT roll back — exception was swallowed
+        log.error("failed", e);   // exception swallowed — transaction commits anyway!
     }
 }
-// FIX: rethrow or use setRollbackOnly()
+// FIX: either don't catch, or call setRollbackOnly()
+@Transactional
+public void fixedErrorHandling() {
+    try {
+        riskyOperation();
+    } catch (Exception e) {
+        log.error("failed", e);
+        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+    }
+}
+
+// PITFALL 4: Checked exceptions don't trigger rollback by default
+@Transactional   // by default only RuntimeException/Error trigger rollback
+public void checkedExceptionPitfall() throws IOException {
+    throw new IOException("this will NOT rollback the transaction by default!");
+}
+// FIX:
+@Transactional(rollbackFor = Exception.class)
+public void fixedCheckedException() throws IOException {
+    throw new IOException("now this WILL rollback");
+}
+
+// PITFALL 5: Long-running transactions holding DB connections
+@Transactional
+public void badPractice() {
+    List<User> users = userRepository.findAll();
+    for (User user : users) {
+        callExternalApi(user);   // slow! holds the DB transaction/connection open the whole time
+    }
+}
+// FIX: separate the DB work from external calls
+public void betterPractice() {
+    List<User> users = userRepository.findAll();   // short transaction
+    for (User user : users) {
+        callExternalApi(user);    // outside any transaction
+    }
+}
 ```
 
 ---
 
 ## Summary
 
-Caching, events, and transactions are the backbone of a production-ready Spring application:
-
-- **@Cacheable / @CacheEvict** — reduce database hits with declarative caching; keep cache consistent on writes.
-- **ApplicationEvents** — publish-subscribe model for decoupled component communication.
-- **@TransactionalEventListener** — react to events only after the transaction commits.
-- **@Transactional** — wrap operations in DB transactions; control propagation, isolation, and rollback.
-
-**Key Takeaways:**
-- Use `@TransactionalEventListener(AFTER_COMMIT)` for side effects that depend on committed data.
-- Use `readOnly = true` on read-only transactions — it skips dirty checking and can use read replicas.
-- Never catch and swallow exceptions inside `@Transactional` — the transaction won't roll back.
-- Cache data that is expensive to compute and changes infrequently; always evict on write.
-- Self-invocation breaks both AOP caching and transactions — always call through the Spring proxy.
+- `@Cacheable` caches a method's return value; `@CachePut` always runs the method AND updates the cache; `@CacheEvict` removes entries.
+- Use SpEL in the `key` attribute to build composite cache keys from multiple parameters.
+- `@TransactionalEventListener(phase = AFTER_COMMIT)` is essential for events that should only fire after successful persistence — regular `@EventListener` fires even if the transaction later rolls back.
+- `REQUIRES_NEW` propagation is the standard pattern for audit logs that must survive a parent transaction's rollback.
+- Self-invocation (`this.method()`) bypasses Spring's proxy — `@Transactional` silently does nothing when called this way.
+- By default, only unchecked exceptions trigger rollback — add `rollbackFor = Exception.class` if you need checked exceptions to roll back too.
+- Keep transactions short — never make slow external calls (HTTP, email) inside a `@Transactional` method.

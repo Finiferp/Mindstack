@@ -1,139 +1,81 @@
 ---
-title: "Spring Framework Core"
+title: "Spring Core"
 sidebar_label: "Spring Core"
 sidebar_position: 9
 ---
 
-# Spring Framework Core
+# Spring Core
 
-Spring is the most widely used Java application framework. Its foundation is the **IoC container** (Inversion of Control) and **dependency injection** — the framework creates and wires your objects together. On top of that, Spring provides AOP, data access, web MVC, security, and much more. Spring Boot makes all of it production-ready with minimal configuration.
+Spring's foundation is the IoC (Inversion of Control) container managing beans through Dependency Injection. Everything else in the Spring ecosystem builds on this.
 
 ---
 
-## Inversion of Control and Dependency Injection
+## IoC and Dependency Injection
 
-In traditional code, a class creates its own dependencies:
+Instead of objects creating their own dependencies, the Spring container creates and injects them.
+
 ```java
-// Without DI — tight coupling
+// Without DI — tightly coupled, hard to test
 public class OrderService {
-    private PaymentGateway gateway = new StripeGateway(); // hardcoded
+    private PaymentGateway gateway = new StripeGateway();  // hardcoded dependency
 }
-```
 
-With Spring, the framework creates and injects dependencies:
-```java
-// With DI — loose coupling, testable
-@Service
+// With DI — loosely coupled, testable
 public class OrderService {
-
     private final PaymentGateway gateway;
-
-    public OrderService(PaymentGateway gateway) {  // injected by Spring
+    public OrderService(PaymentGateway gateway) {  // injected
         this.gateway = gateway;
     }
 }
 ```
 
-Spring's IoC container (the `ApplicationContext`) manages **beans** — objects it creates, configures, and wires together.
-
 ---
 
-## Defining Beans
-
-### Stereotype Annotations
-```java
-@Component   // generic Spring-managed bean
-@Service     // service layer (business logic)
-@Repository  // data access layer (also translates exceptions)
-@Controller  // Spring MVC controller
-@RestController // @Controller + @ResponseBody
-```
+## Component Scanning
 
 ```java
-@Service
-public class UserService {
-    // Spring creates this bean and manages its lifecycle
-}
+import org.springframework.stereotype.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
-@Repository
-public class UserRepository {
-    // Spring creates this bean
-}
-```
+// ── Stereotype annotations — all are @Component under the hood ────────────
+@Component         // generic Spring-managed bean
+public class EmailValidator { }
 
-### @Configuration + @Bean
-For beans you can't annotate directly (third-party classes) or that need construction logic:
+@Service            // business logic layer
+public class UserService { }
 
-```java
-@Configuration
-public class AppConfig {
+@Repository         // data access layer — also enables exception translation
+public class UserRepository { }
 
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper()
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-            .registerModule(new JavaTimeModule());
-    }
+@Controller          // web layer — returns view names
+public class HomeController { }
 
-    @Bean
-    @Profile("production")  // only active in production profile
-    public EmailService emailService() {
-        return new SmtpEmailService(smtpHost(), smtpPort());
-    }
+@RestController       // web layer — returns response bodies directly (Controller + ResponseBody)
+public class UserApiController { }
 
-    @Bean
-    @Profile("development")
-    public EmailService emailService() {
-        return new MockEmailService();
-    }
-
-    @Value("${smtp.host}")
-    private String smtpHost;
-
-    @Value("${smtp.port:587}")
-    private int smtpPort;
-}
-```
-
----
-
-## Dependency Injection
-
-### Constructor Injection (preferred)
-```java
+// ── Constructor injection (PREFERRED — immutable, testable, no reflection needed) ──
 @Service
 public class OrderService {
+    private final UserService userService;
+    private final PaymentService paymentService;
 
-    private final OrderRepository orderRepository;
-    private final PaymentGateway paymentGateway;
-    private final NotificationService notificationService;
-
-    // @Autowired is optional when there's only one constructor (Spring 4.3+)
-    public OrderService(OrderRepository orderRepository,
-                        PaymentGateway paymentGateway,
-                        NotificationService notificationService) {
-        this.orderRepository = orderRepository;
-        this.paymentGateway = paymentGateway;
-        this.notificationService = notificationService;
+    // @Autowired is OPTIONAL on constructor if there's only one constructor (Spring 4.3+)
+    public OrderService(UserService userService, PaymentService paymentService) {
+        this.userService = userService;
+        this.paymentService = paymentService;
     }
 }
-```
 
-### Field Injection (not recommended for production)
-```java
+// ── Field injection (avoid — harder to test, hides dependencies) ──────────
 @Service
-public class OrderService {
-
+public class LegacyService {
     @Autowired
-    private OrderRepository orderRepository; // harder to test, hides dependencies
+    private UserService userService;   // can't be final, requires reflection
 }
-```
 
-### Setter Injection (for optional dependencies)
-```java
+// ── Setter injection (rare — for optional dependencies) ───────────────────
 @Service
-public class ReportService {
-
+public class NotificationService {
     private EmailService emailService;
 
     @Autowired(required = false)
@@ -141,38 +83,188 @@ public class ReportService {
         this.emailService = emailService;
     }
 }
-```
 
-**Tips:**
-- Use constructor injection — it makes dependencies explicit, supports immutability (`final`), and is easy to test.
-- When there are multiple beans of the same type, use `@Qualifier("beanName")` or `@Primary` to disambiguate.
-- `@Autowired` without qualification fails if there are zero or multiple matching beans.
+// Lombok shortcut for constructor injection
+@Service
+@RequiredArgsConstructor   // generates constructor for all final fields
+public class OrderService {
+    private final UserService userService;
+    private final PaymentService paymentService;
+}
+```
 
 ---
 
-## @Qualifier and @Primary
+## Java Configuration
 
 ```java
-public interface MessageSender {
-    void send(String message);
+import org.springframework.context.annotation.*;
+
+@Configuration
+public class AppConfig {
+
+    // @Bean — manually register a bean (for third-party classes you don't control)
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
+
+    // Beans can depend on other beans via method parameters
+    @Bean
+    public UserService userService(UserRepository repo, PasswordEncoder encoder) {
+        return new UserService(repo, encoder);
+    }
+
+    // Bean lifecycle hooks
+    @Bean(initMethod = "connect", destroyMethod = "disconnect")
+    public LegacyConnection legacyConnection() {
+        return new LegacyConnection();
+    }
+
+    // Conditional beans
+    @Bean
+    @ConditionalOnProperty(name = "feature.cache.enabled", havingValue = "true")
+    public CacheManager cacheManager() {
+        return new CaffeineCacheManager();
+    }
+
+    @Bean
+    @Profile("dev")
+    public DataSource devDataSource() {
+        return new EmbeddedDatabaseBuilder().setType(EmbeddedDatabaseType.H2).build();
+    }
+
+    @Bean
+    @Profile("prod")
+    public DataSource prodDataSource() {
+        HikariDataSource ds = new HikariDataSource();
+        ds.setJdbcUrl(System.getenv("DATABASE_URL"));
+        return ds;
+    }
 }
 
-@Component("sms")
-public class SmsSender implements MessageSender { ... }
+// Importing other configs
+@Configuration
+@Import({SecurityConfig.class, WebConfig.class})
+@ComponentScan(basePackages = "com.example.app")
+public class MainConfig { }
 
-@Component("email")
-@Primary  // default when no @Qualifier specified
-public class EmailSender implements MessageSender { ... }
+// PropertySource
+@Configuration
+@PropertySource("classpath:custom.properties")
+public class CustomConfig { }
+```
+
+---
+
+## Dependency Resolution
+
+```java
+// ── Multiple implementations — disambiguate with @Primary or @Qualifier ───
+public interface PaymentProcessor {
+    void process(BigDecimal amount);
+}
+
+@Component
+@Primary   // default choice when multiple candidates exist
+public class StripeProcessor implements PaymentProcessor {
+    @Override public void process(BigDecimal amount) { }
+}
+
+@Component
+public class PayPalProcessor implements PaymentProcessor {
+    @Override public void process(BigDecimal amount) { }
+}
 
 @Service
-public class AlertService {
+public class CheckoutService {
+    private final PaymentProcessor processor;   // injects StripeProcessor (it's @Primary)
 
-    @Autowired
-    private MessageSender sender;  // gets EmailSender (it's @Primary)
+    public CheckoutService(PaymentProcessor processor) {
+        this.processor = processor;
+    }
+}
 
-    @Autowired
-    @Qualifier("sms")
-    private MessageSender smsSender; // explicitly gets SmsSender
+// @Qualifier — explicit selection
+@Component("stripe")
+public class StripeProcessor implements PaymentProcessor { }
+
+@Component("paypal")
+public class PayPalProcessor implements PaymentProcessor { }
+
+@Service
+public class CheckoutService {
+    private final PaymentProcessor processor;
+
+    public CheckoutService(@Qualifier("paypal") PaymentProcessor processor) {
+        this.processor = processor;
+    }
+}
+
+// ── Inject ALL implementations as a List or Map ────────────────────────────
+@Service
+public class PaymentRouter {
+    private final List<PaymentProcessor> processors;        // all beans of this type
+    private final Map<String, PaymentProcessor> processorsByName;  // bean name → bean
+
+    public PaymentRouter(List<PaymentProcessor> processors,
+                          Map<String, PaymentProcessor> processorsByName) {
+        this.processors = processors;
+        this.processorsByName = processorsByName;
+    }
+
+    public void route(String method, BigDecimal amount) {
+        processorsByName.get(method).process(amount);
+    }
+}
+
+// Order beans in the injected List
+@Component
+@Order(1)
+public class FirstValidator implements Validator { }
+
+@Component
+@Order(2)
+public class SecondValidator implements Validator { }
+
+// ── Optional dependencies ───────────────────────────────────────────────
+@Service
+public class ReportService {
+    private final Optional<CacheService> cacheService;  // may not exist
+
+    public ReportService(Optional<CacheService> cacheService) {
+        this.cacheService = cacheService;
+    }
+
+    public Report generate() {
+        return cacheService
+            .map(c -> c.get("report"))
+            .orElseGet(this::computeReport);
+    }
+}
+
+// ── @Value — inject configuration properties ───────────────────────────────
+@Service
+public class EmailService {
+    @Value("${app.email.from}")
+    private String fromAddress;
+
+    @Value("${app.email.retry-count:3}")     // default value 3 if not set
+    private int retryCount;
+
+    @Value("#{systemProperties['user.home']}")  // SpEL
+    private String userHome;
+
+    @Value("${app.allowed-domains}")
+    private List<String> allowedDomains;       // comma-separated → List
 }
 ```
 
@@ -180,77 +272,125 @@ public class AlertService {
 
 ## Bean Scopes
 
-| Scope         | Lifecycle                                         |
-|---------------|---------------------------------------------------|
-| `singleton`   | One instance per container (default)              |
-| `prototype`   | New instance on every injection/`getBean()` call  |
-| `request`     | One instance per HTTP request (web apps)          |
-| `session`     | One instance per HTTP session (web apps)          |
-| `application` | One instance per `ServletContext`                 |
-
 ```java
 @Component
-@Scope("prototype")
-public class ShoppingCart {
-    // New instance for every user that needs one
-}
+@Scope("singleton")    // DEFAULT — one instance per Spring container
+public class UserService { }
+
+@Component
+@Scope("prototype")    // new instance every time it's requested
+public class ShoppingCart { }
 
 @Component
 @Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
-public class RequestContext {
-    // One per HTTP request; proxyMode needed when injecting into singletons
+public class RequestContext { }   // one instance per HTTP request
+
+@Component
+@Scope(value = WebApplicationContext.SCOPE_SESSION, proxyMode = ScopedProxyMode.TARGET_CLASS)
+public class UserSession { }      // one instance per HTTP session
+
+// Injecting a prototype bean into a singleton — gotcha!
+@Service
+public class OrderService {
+    @Autowired
+    private ShoppingCart cart;   // WRONG — injected ONCE at startup, never re-created
+
+    // Correct: use ObjectProvider for fresh instance each call
+    @Autowired
+    private ObjectProvider<ShoppingCart> cartProvider;
+
+    public void newOrder() {
+        ShoppingCart freshCart = cartProvider.getObject();  // new prototype instance
+    }
 }
 ```
 
 ---
 
-## Spring AOP — Aspect-Oriented Programming
+## Bean Lifecycle
 
-AOP lets you add cross-cutting behavior (logging, security, transactions, metrics) without scattering that logic across every class.
+```java
+@Component
+public class DatabaseConnectionPool {
 
-### Concepts
-- **Aspect** — the cross-cutting concern (e.g., logging aspect)
-- **Advice** — the code that runs (before, after, around)
-- **Pointcut** — where advice applies (which methods/classes)
-- **Join Point** — a specific execution point (method call)
+    @PostConstruct   // called after dependency injection is complete
+    public void init() {
+        System.out.println("Connection pool initialized");
+        // open connections, warm up cache, etc.
+    }
+
+    @PreDestroy       // called before bean is destroyed (container shutdown)
+    public void cleanup() {
+        System.out.println("Closing all connections");
+    }
+}
+
+// Implementing interfaces (alternative to annotations)
+public class MyBean implements InitializingBean, DisposableBean {
+    @Override
+    public void afterPropertiesSet() { /* init logic */ }
+
+    @Override
+    public void destroy() { /* cleanup logic */ }
+}
+
+// Bean lifecycle order:
+// 1. Constructor called
+// 2. Dependencies injected (@Autowired fields/setters)
+// 3. @PostConstruct / afterPropertiesSet()
+// 4. Bean ready to use
+// ... application runs ...
+// 5. @PreDestroy / destroy() (on container shutdown)
+```
+
+---
+
+## Aspect-Oriented Programming (AOP)
+
+AOP lets you add cross-cutting behavior (logging, security, transactions) without modifying the target code.
 
 ```java
 import org.aspectj.lang.annotation.*;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
 public class LoggingAspect {
 
-    // Pointcut: any method in any class under com.example.service
+    // Pointcut expression — defines WHERE the advice applies
     @Pointcut("execution(* com.example.service.*.*(..))")
-    private void serviceLayer() {}
+    public void serviceLayer() {}
 
-    // Before advice — runs before the method
+    // @Before — runs before the matched method
     @Before("serviceLayer()")
     public void logBefore(JoinPoint jp) {
         System.out.println("Calling: " + jp.getSignature().getName());
     }
 
-    // After returning — runs after method returns successfully
+    // @After — runs after (regardless of outcome)
+    @After("serviceLayer()")
+    public void logAfter(JoinPoint jp) {
+        System.out.println("Finished: " + jp.getSignature().getName());
+    }
+
+    // @AfterReturning — runs after successful return, access to result
     @AfterReturning(pointcut = "serviceLayer()", returning = "result")
-    public void logAfterReturn(JoinPoint jp, Object result) {
-        System.out.println("Returned from " + jp.getSignature().getName() + ": " + result);
+    public void logSuccess(JoinPoint jp, Object result) {
+        System.out.println(jp.getSignature().getName() + " returned: " + result);
     }
 
-    // After throwing — runs if method throws
+    // @AfterThrowing — runs after exception
     @AfterThrowing(pointcut = "serviceLayer()", throwing = "ex")
-    public void logException(JoinPoint jp, Exception ex) {
-        System.err.println("Exception in " + jp.getSignature().getName() + ": " + ex.getMessage());
+    public void logError(JoinPoint jp, Exception ex) {
+        System.err.println(jp.getSignature().getName() + " threw: " + ex.getMessage());
     }
 
-    // Around — wraps the method, you control execution and return value
+    // @Around — full control: can modify args, skip execution, alter result
     @Around("serviceLayer()")
     public Object measureTime(ProceedingJoinPoint pjp) throws Throwable {
         long start = System.currentTimeMillis();
         try {
-            Object result = pjp.proceed(); // execute the actual method
+            Object result = pjp.proceed();    // call the actual method
             return result;
         } finally {
             long duration = System.currentTimeMillis() - start;
@@ -258,171 +398,217 @@ public class LoggingAspect {
         }
     }
 }
-```
 
-### Custom Annotation Pointcut
-```java
-@Target(ElementType.METHOD)
+// Custom annotation-based pointcuts
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Audited {
-    String action() default "";
-}
+@Target(ElementType.METHOD)
+public @interface LogExecutionTime { }
 
 @Aspect
 @Component
-public class AuditAspect {
-
-    @Around("@annotation(audited)")
-    public Object audit(ProceedingJoinPoint pjp, Audited audited) throws Throwable {
-        System.out.println("Audit: " + audited.action());
-        return pjp.proceed();
+public class TimingAspect {
+    @Around("@annotation(LogExecutionTime)")
+    public Object logTime(ProceedingJoinPoint pjp) throws Throwable {
+        long start = System.nanoTime();
+        Object result = pjp.proceed();
+        long elapsed = (System.nanoTime() - start) / 1_000_000;
+        System.out.println(pjp.getSignature() + " took " + elapsed + "ms");
+        return result;
     }
 }
 
-// Usage
+@Service
+public class ReportService {
+    @LogExecutionTime
+    public Report generateMonthlyReport() {
+        // automatically timed by the aspect
+        return computeReport();
+    }
+}
+
+// Pointcut expression syntax
+// execution(modifiers? return-type declaring-type? method-name(params) throws?)
+"execution(public * com.example..*Service.*(..))"   // any method in *Service classes
+"execution(* com.example.service.UserService.find*(..))"  // find* methods in UserService
+"within(com.example.service..*)"                     // all joinpoints within package
+"@annotation(com.example.Loggable)"                  // methods with @Loggable
+"@within(org.springframework.stereotype.Service)"    // all methods in @Service classes
+"args(String, ..)"                                    // methods with first arg String
+"this(com.example.SomeInterface)"                     // proxy implements interface
+"target(com.example.SomeClass)"                       // target object is instance of class
+
+// Combining pointcuts
+@Pointcut("execution(* com.example.service.*.*(..))")
+public void serviceLayer() {}
+
+@Pointcut("@annotation(org.springframework.transaction.annotation.Transactional)")
+public void transactional() {}
+
+@Before("serviceLayer() && transactional()")
+public void beforeTransactionalServiceMethod() { }
+```
+
+---
+
+## Application Events
+
+```java
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
+
+// Event class (POJO — no need to extend ApplicationEvent since Spring 4.2)
+public record UserRegisteredEvent(String userId, String email) {}
+
+// Publishing
 @Service
 public class UserService {
+    private final ApplicationEventPublisher publisher;
 
-    @Audited(action = "CREATE_USER")
-    public User createUser(CreateUserRequest request) { ... }
+    public UserService(ApplicationEventPublisher publisher) {
+        this.publisher = publisher;
+    }
+
+    public void register(String email) {
+        // ... save user
+        publisher.publishEvent(new UserRegisteredEvent(userId, email));
+    }
 }
-```
 
-**Tips:**
-- AOP only works on Spring-managed beans (proxied by Spring). Calling `this.method()` within the same class bypasses AOP.
-- Use `@Around` when you need to control execution, measure time, or handle exceptions.
-- Use `@Before`/`@After` for simpler logging or auditing.
-- Spring AOP uses JDK dynamic proxies for interfaces and CGLIB for classes.
+// Listening
+@Component
+public class EmailNotifier {
+    @EventListener
+    public void onUserRegistered(UserRegisteredEvent event) {
+        sendWelcomeEmail(event.email());
+    }
+
+    // Multiple listeners can listen to the same event — all run synchronously by default
+    @EventListener
+    @Async                          // run asynchronously (requires @EnableAsync)
+    public void sendAnalytics(UserRegisteredEvent event) {
+        analyticsService.track("user_registered", event.userId());
+    }
+
+    // Conditional listener
+    @EventListener(condition = "#event.email.endsWith('@company.com')")
+    public void onInternalUserRegistered(UserRegisteredEvent event) {
+        notifyTeam(event);
+    }
+
+    // Ordering multiple listeners for the same event
+    @EventListener
+    @Order(1)
+    public void firstListener(UserRegisteredEvent event) { }
+
+    // Transaction-bound events — only fire after commit
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void afterCommit(UserRegisteredEvent event) {
+        // safe to assume the DB write succeeded
+    }
+}
+
+// Built-in Spring events you can listen to
+@EventListener
+public void onContextRefreshed(ContextRefreshedEvent event) { }   // app fully started
+
+@EventListener
+public void onContextClosed(ContextClosedEvent event) { }         // app shutting down
+```
 
 ---
 
-## Configuration Properties
-
-### application.properties / application.yml
-```properties
-# application.properties
-server.port=8080
-app.name=My Application
-app.max-retries=3
-app.database.url=jdbc:postgresql://localhost:5432/mydb
-app.database.username=postgres
-app.database.password=${DB_PASSWORD}  # from environment variable
-```
-
-```yaml
-# application.yml
-server:
-  port: 8080
-app:
-  name: My Application
-  max-retries: 3
-  database:
-    url: jdbc:postgresql://localhost:5432/mydb
-    username: postgres
-    password: ${DB_PASSWORD}
-```
-
-### Injecting Properties
-```java
-// Single value injection
-@Value("${app.name}")
-private String appName;
-
-@Value("${app.max-retries:3}")   // 3 is the default
-private int maxRetries;
-
-// Type-safe configuration class
-@ConfigurationProperties(prefix = "app.database")
-@Component
-public class DatabaseProperties {
-    private String url;
-    private String username;
-    private String password;
-    // getters/setters or use @ConstructorBinding with record
-}
-```
-
-### Profiles
-Profiles activate different configurations per environment:
+## SpEL (Spring Expression Language)
 
 ```java
-@Profile("production")
-@Component
-public class ProductionDataSource implements DataSource { ... }
+// In @Value
+@Value("#{2 + 3}")
+private int sum;   // 5
 
-@Profile("!production")
-@Component
-public class H2DataSource implements DataSource { ... }
+@Value("#{systemProperties['user.region']}")
+private String region;
+
+@Value("#{userService.defaultRole}")    // reference another bean's property
+private String defaultRole;
+
+@Value("#{userService.findAll().size()}")  // call methods
+private int userCount;
+
+// Conditional
+@Value("#{systemProperties['env'] == 'prod' ? 'https://api.prod.com' : 'http://localhost:8080'}")
+private String apiUrl;
+
+// In @PreAuthorize (Spring Security)
+@PreAuthorize("#userId == authentication.principal.id or hasRole('ADMIN')")
+public User getUser(Long userId) { ... }
+
+// In @Cacheable
+@Cacheable(value = "users", key = "#id", condition = "#id > 0")
+public User findById(Long id) { ... }
 ```
-
-Activate with: `spring.profiles.active=production` in properties, or `-Dspring.profiles.active=production` as JVM arg.
 
 ---
 
-## ApplicationContext and the Container
+## Environment and Profiles
 
 ```java
-// Bootstrap an ApplicationContext manually (rarely needed — Spring Boot handles it)
-ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
-
-UserService service = ctx.getBean(UserService.class);
-UserService byName = (UserService) ctx.getBean("userService");
-
-// Access in a bean (rarely needed — prefer injection)
 @Component
-public class SomeBean implements ApplicationContextAware {
+public class FeatureChecker {
+    @Autowired
+    private Environment env;
 
-    private ApplicationContext ctx;
+    public void check() {
+        String dbUrl = env.getProperty("spring.datasource.url");
+        boolean isProd = env.acceptsProfiles(Profiles.of("prod"));
+        String[] activeProfiles = env.getActiveProfiles();
+        boolean hasFeature = env.getProperty("feature.x.enabled", Boolean.class, false);
+    }
+}
 
+// Profile-specific beans
+@Profile("dev")
+@Component
+public class DevEmailService implements EmailService {
     @Override
-    public void setApplicationContext(ApplicationContext ctx) {
-        this.ctx = ctx;
+    public void send(String to, String subject, String body) {
+        System.out.println("DEV MODE — would send: " + subject);
     }
 }
-```
 
-### Lifecycle Events
-```java
+@Profile("prod")
 @Component
-public class StartupRunner implements ApplicationListener<ContextRefreshedEvent> {
+public class SmtpEmailService implements EmailService {
     @Override
-    public void onApplicationEvent(ContextRefreshedEvent event) {
-        System.out.println("Application started!");
+    public void send(String to, String subject, String body) {
+        // actually send via SMTP
     }
 }
 
-// Or with annotation
+// Activating profiles
+// application.properties: spring.profiles.active=dev
+// Command line: java -jar app.jar --spring.profiles.active=prod
+// Environment variable: SPRING_PROFILES_ACTIVE=prod
+// Programmatically: SpringApplication.setAdditionalProfiles("dev")
+
+// Multiple profiles
+@Profile({"dev", "test"})  // active if EITHER profile is active
 @Component
-public class DataLoader {
+public class NonProdOnlyBean { }
 
-    @PostConstruct
-    public void init() {
-        // Runs after the bean is fully initialized and all dependencies injected
-        System.out.println("Bean ready!");
-    }
-
-    @PreDestroy
-    public void cleanup() {
-        // Runs when the application shuts down
-        System.out.println("Cleaning up...");
-    }
-}
+@Profile("!prod")  // active if prod is NOT active
+@Component
+public class NonProdBean { }
 ```
 
 ---
 
 ## Summary
 
-Spring Core is built on a few powerful ideas:
-
-- **IoC Container** — Spring creates and wires your objects; you don't `new` your dependencies.
-- **Dependency Injection** — beans declare what they need; Spring provides it.
-- **AOP** — cross-cutting concerns declared separately from business logic.
-- **Configuration** — externalize properties, switch behavior by profile.
-
-**Key Takeaways:**
-- Always use constructor injection — it's explicit, testable, and supports immutability.
-- Annotate with the most specific stereotype: `@Service`, `@Repository`, `@Controller` over plain `@Component`.
-- AOP proxies break on self-invocation — don't call `this.advisedMethod()` expecting the aspect to fire.
-- Use `@ConfigurationProperties` for complex, grouped configuration — far better than scattering `@Value` everywhere.
-- `@PostConstruct` and `@PreDestroy` are the clean way to hook into bean lifecycle events.
+- Constructor injection is the recommended DI style — immutable fields, explicit dependencies, easy to test.
+- `@Component`/`@Service`/`@Repository`/`@Controller` are functionally identical but communicate intent and trigger framework-specific behavior (e.g. exception translation for `@Repository`).
+- Use `@Primary` for a default implementation, `@Qualifier` to select a specific one explicitly.
+- Bean scope is `singleton` by default — use `ObjectProvider` to get fresh `prototype` instances inside a singleton.
+- `@PostConstruct`/`@PreDestroy` hook into the bean lifecycle for setup/cleanup.
+- AOP with `@Aspect` and pointcut expressions adds cross-cutting concerns (logging, timing, security) without polluting business logic.
+- Application events (`ApplicationEventPublisher` + `@EventListener`) decouple side effects from the triggering action.
+- `@Profile` lets you swap implementations per environment (dev/test/prod) without code changes.

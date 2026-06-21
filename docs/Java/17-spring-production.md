@@ -1,514 +1,435 @@
 ---
-title: "Spring in Production"
-sidebar_label: "Production & Deployment"
+title: "Spring Production"
+sidebar_label: "Production"
 sidebar_position: 17
 ---
 
-# Spring in Production
+# Spring Production
 
-Writing a working application is one thing; running it reliably at scale is another. Production Spring Boot applications need proper logging, metrics, health checks, containerization, and thoughtful performance tuning. This section covers what you need to go from a working JAR to a production-grade service.
+Running Spring Boot in production requires structured logging, metrics, health checks, proper JVM tuning, and graceful shutdown handling.
 
 ---
 
-## Logging
+## Logging with Logback
 
-Spring Boot uses **Logback** by default (configured via `application.yml` or `logback-spring.xml`). SLF4J is the logging facade — use it so you can swap the implementation without changing code.
-
-```java
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-@Service
-public class UserService {
-
-    private static final Logger log = LoggerFactory.getLogger(UserService.class);
-
-    // Or with Lombok @Slf4j annotation:
-    // @Slf4j
-    // public class UserService { ...  }
-
-    public User createUser(CreateUserRequest request) {
-        log.debug("Creating user with email: {}", request.email()); // param substitution — no string concat
-        log.info("Creating new user: {}", request.email());
-
-        try {
-            User user = userRepository.save(new User(request));
-            log.info("User created successfully: id={}, email={}", user.getId(), user.getEmail());
-            return user;
-        } catch (Exception e) {
-            log.error("Failed to create user with email {}: {}", request.email(), e.getMessage(), e);
-            throw e;
-        }
-    }
-}
-```
-
-### Log Level Configuration
-
-```yaml
-logging:
-  level:
-    root: INFO                           # default level
-    com.example.myapp: DEBUG            # your application — verbose
-    org.springframework.web: WARN       # Spring MVC — less noise
-    org.hibernate.SQL: DEBUG            # show all SQL
-    org.hibernate.type.descriptor.sql: TRACE  # show SQL bind parameters
-
-  # Log format
-  pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-
-  # File output
-  file:
-    name: logs/app.log
-    max-size: 100MB
-    max-history: 30
-```
-
-### Structured Logging (JSON for log aggregators)
+Spring Boot uses Logback by default.
 
 ```xml
-<!-- Add to pom.xml for JSON log output -->
-<dependency>
-    <groupId>net.logstash.logback</groupId>
-    <artifactId>logstash-logback-encoder</artifactId>
-    <version>7.4</version>
-</dependency>
-```
-
-```xml
-<!-- logback-spring.xml -->
+<!-- src/main/resources/logback-spring.xml -->
 <configuration>
-    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-    </appender>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <springProfile name="production">
-        <root level="INFO">
-            <appender-ref ref="JSON"/>
-        </root>
-    </springProfile>
-
-    <springProfile name="!production">
+    <springProfile name="dev">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{HH:mm:ss.SSS} %-5level %logger{30} - %msg%n</pattern>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%thread] %cyan(%logger{36}) - %msg%n</pattern>
             </encoder>
         </appender>
         <root level="DEBUG">
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
+
+    <springProfile name="prod">
+        <!-- JSON structured logging for log aggregators (ELK, Datadog, CloudWatch) -->
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"service":"my-app","env":"production"}</customFields>
+            </encoder>
+        </appender>
+
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/app.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/app.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+            <appender-ref ref="FILE"/>
+        </root>
+
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="com.example" level="INFO"/>
+    </springProfile>
 </configuration>
 ```
 
-**Tips:**
-- Use parameterized logging: `log.debug("User: {}", user)` not `log.debug("User: " + user)` — the string concatenation runs even when debug is disabled.
-- Log at DEBUG for development diagnostics, INFO for business events, WARN for recoverable issues, ERROR for failures.
-- In production, output JSON logs — aggregators (ELK stack, Datadog, Grafana Loki) parse them automatically.
-- Include a correlation/trace ID in logs for tracing requests across services.
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class OrderService {
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+    // Or with Lombok: @Slf4j on the class, then just use `log`
+
+    public void placeOrder(Order order) {
+        log.info("Placing order for user {}", order.getUserId());
+
+        try {
+            process(order);
+            log.info("Order {} placed successfully, total={}", order.getId(), order.getTotal());
+        } catch (Exception e) {
+            log.error("Failed to place order for user {}", order.getUserId(), e);  // pass exception last
+            throw e;
+        }
+
+        // Structured logging with MDC (Mapped Diagnostic Context) — adds context to every log line
+        MDC.put("orderId", order.getId().toString());
+        MDC.put("userId", order.getUserId().toString());
+        try {
+            log.info("Processing payment");   // includes orderId and userId automatically
+            processPayment(order);
+        } finally {
+            MDC.clear();
+        }
+    }
+}
+
+// Log levels (most to least severe)
+log.error("Something failed", exception);   // errors requiring attention
+log.warn("Unusual condition");               // potential issues, degraded behavior
+log.info("Order placed: {}", orderId);       // significant business events
+log.debug("Cache hit for key: {}", key);     // detailed diagnostic info
+log.trace("Entering method with args: {}", args);  // very fine-grained
+```
+
+```properties
+# application.properties — runtime logging config
+logging.level.root=INFO
+logging.level.com.example=DEBUG
+logging.level.org.springframework.web=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.orm.jdbc.bind=TRACE   # log SQL parameter values
+```
 
 ---
 
-## Metrics with Micrometer
+## Micrometer Metrics
 
-Micrometer is included in `spring-boot-starter-actuator`. It's a vendor-neutral metrics facade — export to Prometheus, Datadog, CloudWatch, etc.
-
-```yaml
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    tags:
-      application: ${spring.application.name}
-      environment: ${spring.profiles.active:default}
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-prometheus</artifactId>
+</dependency>
 ```
 
-### Custom Metrics
+```properties
+management.endpoints.web.exposure.include=health,info,metrics,prometheus
+management.metrics.tags.application=${spring.application.name}
+management.metrics.distribution.percentiles-histogram.http.server.requests=true
+```
 
 ```java
 @Service
-public class OrderService {
+public class OrderMetrics {
+    private final Counter ordersPlaced;
+    private final Timer orderProcessingTime;
+    private final DistributionSummary orderValueSummary;
 
-    private final MeterRegistry meterRegistry;
-    private final Counter orderCounter;
-    private final Timer orderProcessingTimer;
+    public OrderMetrics(MeterRegistry registry) {
+        this.ordersPlaced = Counter.builder("orders.placed")
+            .description("Total number of orders placed")
+            .tag("type", "online")
+            .register(registry);
 
-    public OrderService(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
-        this.orderCounter = Counter.builder("orders.created")
-            .description("Total orders created")
-            .tag("service", "orders")
-            .register(meterRegistry);
-        this.orderProcessingTimer = Timer.builder("orders.processing.time")
+        this.orderProcessingTime = Timer.builder("orders.processing.time")
             .description("Time to process an order")
-            .register(meterRegistry);
+            .register(registry);
+
+        this.orderValueSummary = DistributionSummary.builder("orders.value")
+            .description("Distribution of order values")
+            .baseUnit("dollars")
+            .register(registry);
+
+        // Gauge — current value of something (e.g. queue size)
+        Gauge.builder("orders.queue.size", this, OrderMetrics::getQueueSize)
+            .register(registry);
     }
 
-    public Order placeOrder(PlaceOrderRequest request) {
-        return orderProcessingTimer.record(() -> {
-            Order order = processOrder(request);
-            orderCounter.increment();
-            meterRegistry.gauge("orders.active", getActiveOrderCount());
-            return order;
-        });
+    public void recordOrder(Order order) {
+        ordersPlaced.increment();
+        orderValueSummary.record(order.getTotal().doubleValue());
     }
 
-    // Or use annotations
-    @Timed(value = "orders.processing.time", description = "Order processing time")
-    @Counted(value = "orders.created", description = "Orders created")
-    public Order placeOrderAnnotated(PlaceOrderRequest request) {
-        return processOrder(request);
+    public void recordProcessingTime(Runnable task) {
+        orderProcessingTime.record(task);
     }
+
+    private double getQueueSize() { return 0; }   // implement actual gauge logic
 }
+
+// Auto-instrumented metrics already provided:
+// http.server.requests — request count, latency by endpoint/status
+// jvm.memory.used, jvm.memory.max — heap/non-heap memory
+// jvm.gc.pause — garbage collection pauses
+// process.cpu.usage — CPU usage
+// hikaricp.connections — connection pool stats (if using HikariCP)
+// jdbc.connections.active — active DB connections
 ```
 
-### Prometheus Scrape Config (kubernetes/docker)
-
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'spring-app'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets: ['myapp:8080']
+```bash
+GET /actuator/prometheus    # Prometheus-format metrics scrape endpoint
+GET /actuator/metrics/http.server.requests
+GET /actuator/metrics/jvm.memory.used?tag=area:heap
 ```
 
 ---
 
 ## Health Checks
 
-Actuator's `/actuator/health` aggregates all health indicators. Load balancers and Kubernetes use this to route traffic.
-
-```yaml
-management:
-  endpoint:
-    health:
-      show-details: always            # or 'when-authorized'
-      show-components: always
-  health:
-    db:
-      enabled: true                   # checks datasource connectivity
-    diskspace:
-      enabled: true
-      threshold: 10485760             # 10MB free minimum
-    redis:
-      enabled: true
-```
-
 ```java
 @Component
-public class ExternalServiceHealthIndicator extends AbstractHealthIndicator {
-
-    private final RestClient externalClient;
+public class ExternalServiceHealthIndicator implements HealthIndicator {
+    private final RestClient restClient;
 
     @Override
-    protected void doHealthCheck(Health.Builder builder) throws Exception {
+    public Health health() {
         try {
-            ResponseEntity<Void> resp = externalClient.get()
-                .uri("/health")
-                .retrieve()
-                .toBodilessEntity();
-
-            if (resp.getStatusCode().is2xxSuccessful()) {
-                builder.up()
-                    .withDetail("service", "external-api")
-                    .withDetail("status", "reachable");
-            } else {
-                builder.down().withDetail("reason", "non-2xx response: " + resp.getStatusCode());
-            }
+            restClient.get().uri("/health").retrieve().toBodilessEntity();
+            return Health.up().build();
         } catch (Exception e) {
-            builder.down(e);
+            return Health.down()
+                .withDetail("error", e.getMessage())
+                .withDetail("service", "payment-gateway")
+                .build();
         }
+    }
+}
+
+@Component
+public class DiskSpaceHealthIndicator implements HealthIndicator {
+    @Override
+    public Health health() {
+        File path = new File("/");
+        long freeSpace = path.getFreeSpace();
+        long threshold = 1_000_000_000L; // 1GB
+
+        if (freeSpace < threshold) {
+            return Health.down()
+                .withDetail("free", freeSpace)
+                .withDetail("threshold", threshold)
+                .build();
+        }
+        return Health.up().withDetail("free", freeSpace).build();
     }
 }
 ```
 
-### Kubernetes Liveness and Readiness
-
-Spring Boot 2.3+ exposes dedicated probes:
-
-```yaml
-management:
-  endpoint:
-    health:
-      probes:
-        enabled: true
-  health:
-    livenessstate:
-      enabled: true
-    readinessstate:
-      enabled: true
+```properties
+management.endpoint.health.show-details=when-authorized
+management.endpoint.health.probes.enabled=true
+management.health.livenessstate.enabled=true
+management.health.readinessstate.enabled=true
 ```
-
-```yaml
-# kubernetes deployment.yaml
-livenessProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8080
-  initialDelaySeconds: 30
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /actuator/health/readiness
-    port: 8080
-  initialDelaySeconds: 20
-  periodSeconds: 5
-```
-
----
-
-## Containerization with Docker
-
-### Dockerfile (simple)
-
-```dockerfile
-FROM eclipse-temurin:21-jre-alpine
-
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-WORKDIR /app
-
-COPY target/my-app-1.0.0.jar app.jar
-
-USER appuser
-
-EXPOSE 8080
-
-# JVM options for containers: limit heap, enable container awareness
-ENTRYPOINT ["java", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-XX:+UseContainerSupport", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
-```
-
-### Dockerfile (layered — faster rebuilds)
-
-Spring Boot creates layered JARs by default. Dependencies change less often than your code, so putting them in an earlier Docker layer means faster rebuilds.
-
-```dockerfile
-FROM eclipse-temurin:21-jre-alpine AS builder
-WORKDIR /app
-COPY target/my-app-1.0.0.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
-
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-COPY --from=builder /app/dependencies/ ./
-COPY --from=builder /app/spring-boot-loader/ ./
-COPY --from=builder /app/snapshot-dependencies/ ./
-COPY --from=builder /app/application/ ./
-
-USER appuser
-EXPOSE 8080
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
-```
-
-### Docker Compose (local development)
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - DB_PASSWORD=${DB_PASSWORD}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-volumes:
-  postgres-data:
-```
-
----
-
-## Performance Tuning
-
-### JVM Options for Production
 
 ```bash
-java \
-  -server \
-  -XX:+UseG1GC \                        # G1 GC (default Java 9+)
-  -XX:MaxRAMPercentage=75.0 \           # use 75% of container memory for heap
-  -XX:+UseContainerSupport \            # respect container CPU/memory limits
-  -XX:+HeapDumpOnOutOfMemoryError \     # dump heap on OOM for diagnosis
-  -XX:HeapDumpPath=/tmp/heapdump.hprof \
-  -Xss512k \                            # reduce thread stack size
-  -jar app.jar
+GET /actuator/health           # overall health (UP/DOWN)
+GET /actuator/health/liveness  # is the JVM running? (k8s liveness probe)
+GET /actuator/health/readiness # ready to accept traffic? (k8s readiness probe)
 ```
 
-### HikariCP Connection Pool Tuning
+---
 
-```yaml
-spring:
-  datasource:
-    hikari:
-      maximum-pool-size: 10         # rule of thumb: (cpu_cores * 2) + disk_spindles
-      minimum-idle: 5
-      connection-timeout: 30000     # 30s — max wait for connection from pool
-      idle-timeout: 600000          # 10min — remove idle connections
-      max-lifetime: 1800000         # 30min — recycle connections (before DB closes them)
-      validation-timeout: 5000
-      connection-test-query: SELECT 1
-```
+## JVM Tuning
 
-### JPA Query Optimization
+```bash
+# Memory settings
+java -Xms512m -Xmx2g \                    # initial/max heap size
+     -XX:MaxMetaspaceSize=256m \          # metaspace (class metadata)
+     -XX:+UseG1GC \                       # G1 garbage collector (good default for most apps)
+     -XX:MaxGCPauseMillis=200 \           # target max GC pause
+     -jar app.jar
 
-```yaml
-spring:
-  jpa:
-    properties:
-      hibernate:
-        jdbc:
-          batch_size: 50             # batch INSERT/UPDATE
-          fetch_size: 50             # fetch rows in batches from DB cursor
-        order_inserts: true          # group inserts for better batching
-        order_updates: true
-        generate_statistics: false   # enable temporarily for diagnosis
-```
+# Container-aware settings (important in Docker/Kubernetes)
+java -XX:+UseContainerSupport \           # respect container memory limits (default since Java 10)
+     -XX:MaxRAMPercentage=75.0 \          # use 75% of container memory for heap
+     -jar app.jar
 
-```java
-// Detect N+1 queries with Hibernate statistics
-// Or use the datasource-proxy library to log individual SQL with counts
+# GC logging (for diagnosing pause times)
+java -Xlog:gc*:file=gc.log:time,uptime:filecount=5,filesize=10M \
+     -jar app.jar
+
+# Heap dump on OOM (for post-mortem analysis)
+java -XX:+HeapDumpOnOutOfMemoryError \
+     -XX:HeapDumpPath=/var/dumps/ \
+     -jar app.jar
+
+# Common production flags
+java -server \
+     -Xms1g -Xmx1g \                      # same min/max avoids resize pauses
+     -XX:+UseG1GC \
+     -XX:+UseContainerSupport \
+     -XX:MaxRAMPercentage=75.0 \
+     -XX:+HeapDumpOnOutOfMemoryError \
+     -Djava.security.egd=file:/dev/./urandom \  # faster startup (avoid blocking entropy)
+     -jar app.jar
 ```
 
 ---
 
 ## Graceful Shutdown
 
-Spring Boot 2.3+ supports graceful shutdown — in-flight requests finish before the server stops.
-
-```yaml
-server:
-  shutdown: graceful
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s  # wait up to 30s for active requests
+```properties
+server.shutdown=graceful
+spring.lifecycle.timeout-per-shutdown-phase=30s
 ```
 
 ```java
-// Hook into shutdown for cleanup
 @Component
 public class ShutdownHook {
 
     @PreDestroy
     public void onShutdown() {
-        log.info("Application shutting down — cleaning up resources");
-        // close connections, flush queues, etc.
+        log.info("Application shutting down, finishing in-flight requests...");
+        // Spring Boot's graceful shutdown automatically:
+        // 1. Stops accepting new requests
+        // 2. Waits for in-flight requests to complete (up to timeout)
+        // 3. Then shuts down the application context
+    }
+}
+
+// Custom shutdown logic for resources Spring doesn't manage automatically
+@Component
+public class CustomResourceCleanup implements DisposableBean {
+    private final ExecutorService executorService;
+
+    @Override
+    public void destroy() throws Exception {
+        executorService.shutdown();
+        if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
+            executorService.shutdownNow();
+        }
     }
 }
 ```
 
----
-
-## Environment-Specific Configuration Best Practices
-
 ```yaml
-# application.yml — shared defaults
-spring:
-  application:
-    name: my-service
-
----
-# application-dev.yml
-spring:
-  datasource:
-    url: jdbc:h2:mem:devdb
-  jpa:
-    show-sql: true
-logging:
-  level:
-    com.example: DEBUG
-
----
-# application-prod.yml
-spring:
-  datasource:
-    url: ${DATABASE_URL}          # from env var
-    username: ${DATABASE_USER}
-    password: ${DATABASE_PASSWORD}
-  jpa:
-    show-sql: false
-logging:
-  level:
-    root: WARN
-    com.example: INFO
-management:
-  endpoint:
-    health:
-      show-details: when-authorized
+# Kubernetes — give the app time to drain before SIGKILL
+spec:
+  terminationGracePeriodSeconds: 45
+  containers:
+    - name: app
+      lifecycle:
+        preStop:
+          exec:
+            command: ["sh", "-c", "sleep 10"]  # allow load balancer to deregister pod first
 ```
 
-**Never commit secrets.** Use:
-- Environment variables (simplest)
-- Kubernetes Secrets
-- HashiCorp Vault (`spring-cloud-vault`)
-- AWS Secrets Manager (`spring-cloud-aws`)
+---
+
+## Connection Pool Tuning (HikariCP)
+
+```properties
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=2
+spring.datasource.hikari.idle-timeout=600000
+spring.datasource.hikari.max-lifetime=1800000
+spring.datasource.hikari.connection-timeout=30000
+spring.datasource.hikari.leak-detection-threshold=60000
+spring.datasource.hikari.pool-name=MyAppPool
+```
+
+```
+Sizing formula (rule of thumb):
+connections = ((core_count * 2) + effective_spindle_count)
+
+For typical cloud DBs (SSD-backed): pool size of 10-20 is usually sufficient
+even under high load — more connections often makes things WORSE due to
+context switching and lock contention on the database side.
+```
+
+---
+
+## Configuration Management
+
+```java
+// Externalize ALL environment-specific config — never hardcode
+@ConfigurationProperties(prefix = "app")
+@Validated
+public record AppProperties(
+    @NotBlank String name,
+    @NotNull DatabaseProperties database,
+    @NotNull SecurityProperties security
+) {
+    public record DatabaseProperties(@NotBlank String url, int poolSize) {}
+    public record SecurityProperties(@NotBlank String jwtSecret, Duration tokenExpiry) {}
+}
+```
+
+```bash
+# Secrets — NEVER in application.properties committed to git
+# Use environment variables, Vault, AWS Secrets Manager, or Kubernetes Secrets
+
+export DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id prod/db --query SecretString --output text)
+java -jar app.jar
+```
+
+```yaml
+# Kubernetes ConfigMap + Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+type: Opaque
+stringData:
+  DB_PASSWORD: "..."
+  JWT_SECRET: "..."
+---
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          envFrom:
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests: { cpu: "500m", memory: "768Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }
+```
+
+---
+
+## Production Checklist
+
+```
+✅ spring.jpa.open-in-view=false
+✅ spring.jpa.hibernate.ddl-auto=validate (never auto/update/create in prod — use Flyway/Liquibase)
+✅ Structured JSON logging with correlation IDs
+✅ Actuator health/readiness/liveness endpoints enabled and secured
+✅ Graceful shutdown configured (server.shutdown=graceful)
+✅ Connection pool sized appropriately (not too large!)
+✅ Timeouts set on all outbound HTTP calls
+✅ Resilience patterns (circuit breaker, retry) on external dependencies
+✅ Secrets externalized — never in version control
+✅ JVM heap sized for container memory limits (-XX:MaxRAMPercentage)
+✅ Metrics exported to Prometheus/Datadog/CloudWatch
+✅ Rate limiting on public endpoints
+✅ CORS configured explicitly — no wildcard origins with credentials
+```
 
 ---
 
 ## Summary
 
-Production-ready Spring Boot applications require more than working code:
-
-- **Logging** — structured JSON logs, correlated by request ID, at the right levels.
-- **Metrics** — Micrometer + Prometheus + Grafana for operational visibility.
-- **Health checks** — Actuator endpoints consumed by load balancers and Kubernetes.
-- **Docker** — layered images for fast builds; non-root users for security.
-- **JVM tuning** — container-aware heap sizing, G1GC, connection pool sizing.
-- **Graceful shutdown** — finish in-flight requests before stopping.
-
-**Key Takeaways:**
-- Set `MaxRAMPercentage` and `UseContainerSupport` JVM flags — without them, the JVM ignores container memory limits.
-- Use layered Docker builds — they cut rebuild time from minutes to seconds when only your code changes.
-- Never log secrets or PII, even at DEBUG level.
-- Size the HikariCP pool based on your database server's capacity, not your application's demand.
-- Use graceful shutdown in production — abrupt termination drops in-flight requests.
+- Use structured JSON logging in production — log aggregators need parseable, queryable fields, not plain text.
+- MDC adds request-scoped context (correlation ID, user ID) to every log line automatically.
+- Micrometer + `/actuator/prometheus` is the standard metrics pipeline for Spring Boot apps.
+- Implement custom `HealthIndicator`s for every critical external dependency (DB, cache, downstream APIs).
+- Set `-XX:MaxRAMPercentage` instead of fixed `-Xmx` in containers — it adapts to the container's memory limit.
+- Enable `server.shutdown=graceful` so in-flight requests complete before the JVM exits during deploys.
+- Never use `ddl-auto=update` in production — use a migration tool (Flyway/Liquibase) for schema changes.
+- Size your connection pool conservatively — bigger isn't always better; database-side contention can make large pools counterproductive.

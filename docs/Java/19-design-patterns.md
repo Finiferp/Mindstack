@@ -6,55 +6,49 @@ sidebar_position: 19
 
 # Design Patterns in Java
 
-Design patterns are proven solutions to recurring software design problems. They're not libraries or frameworks — they're templates for structuring code. Knowing them helps you recognize common problems faster and communicate solutions clearly with other developers.
+Classic Gang of Four design patterns, implemented in modern Java. Patterns are tools — apply them when they solve a real problem, not for their own sake.
 
 ---
 
 ## Creational Patterns
 
-Creational patterns deal with object creation.
-
 ### Singleton
 
-Ensures only one instance of a class exists in the application.
+Ensures a class has only one instance, with global access.
 
 ```java
-// Thread-safe singleton with lazy initialization
+// Enum singleton — simplest, thread-safe, serialization-safe (RECOMMENDED)
+public enum ConfigManager {
+    INSTANCE;
+
+    private final Map<String, String> settings = new ConcurrentHashMap<>();
+
+    public String get(String key) { return settings.get(key); }
+    public void set(String key, String value) { settings.put(key, value); }
+}
+ConfigManager.INSTANCE.set("env", "production");
+
+// Lazy initialization holder — thread-safe without synchronization overhead
 public class DatabaseConnection {
+    private DatabaseConnection() { }
 
-    private static volatile DatabaseConnection instance;
-
-    private DatabaseConnection() {}
+    private static class Holder {
+        private static final DatabaseConnection INSTANCE = new DatabaseConnection();
+    }
 
     public static DatabaseConnection getInstance() {
-        if (instance == null) {
-            synchronized (DatabaseConnection.class) {
-                if (instance == null) {  // double-checked locking
-                    instance = new DatabaseConnection();
-                }
-            }
-        }
-        return instance;
+        return Holder.INSTANCE;   // class loading is thread-safe by JVM spec
     }
 }
 
-// Simpler: enum singleton (thread-safe, serialization-safe)
-public enum AppConfig {
-    INSTANCE;
-
-    private final String dbUrl = System.getenv("DATABASE_URL");
-
-    public String getDbUrl() { return dbUrl; }
-}
+// In Spring — singletons are just default-scoped @Component beans
+@Component  // Spring manages the singleton lifecycle for you — no manual pattern needed
+public class CacheService { }
 ```
-
-**In Spring:** `@Component` beans are singletons by default. Prefer Spring-managed singletons over hand-rolled ones.
-
----
 
 ### Factory Method
 
-Defines an interface for creating objects, letting subclasses decide which class to instantiate.
+Defines an interface for creating an object, letting subclasses decide which class to instantiate.
 
 ```java
 public interface Notification {
@@ -62,394 +56,428 @@ public interface Notification {
 }
 
 public class EmailNotification implements Notification {
-    public void send(String message) { /* send email */ }
+    public void send(String message) { System.out.println("Email: " + message); }
 }
-
 public class SmsNotification implements Notification {
-    public void send(String message) { /* send SMS */ }
+    public void send(String message) { System.out.println("SMS: " + message); }
 }
 
-public class PushNotification implements Notification {
-    public void send(String message) { /* push */ }
+public abstract class NotificationFactory {
+    public abstract Notification createNotification();
+
+    public void notify(String message) {
+        Notification notification = createNotification();
+        notification.send(message);
+    }
 }
 
-// Factory
-public class NotificationFactory {
+public class EmailNotificationFactory extends NotificationFactory {
+    public Notification createNotification() { return new EmailNotification(); }
+}
+
+// Simple factory (not GoF-strict but very common in practice)
+public class NotificationFactorySimple {
     public static Notification create(String type) {
         return switch (type) {
-            case "EMAIL" -> new EmailNotification();
-            case "SMS"   -> new SmsNotification();
-            case "PUSH"  -> new PushNotification();
+            case "email" -> new EmailNotification();
+            case "sms"   -> new SmsNotification();
             default      -> throw new IllegalArgumentException("Unknown type: " + type);
         };
     }
 }
-
-// Usage
-Notification n = NotificationFactory.create("EMAIL");
-n.send("Hello!");
 ```
 
----
+### Abstract Factory
+
+Creates families of related objects without specifying concrete classes.
+
+```java
+public interface Button { void render(); }
+public interface Checkbox { void render(); }
+
+public class MacButton implements Button { public void render() { System.out.println("Mac button"); } }
+public class MacCheckbox implements Checkbox { public void render() { System.out.println("Mac checkbox"); } }
+public class WindowsButton implements Button { public void render() { System.out.println("Windows button"); } }
+public class WindowsCheckbox implements Checkbox { public void render() { System.out.println("Windows checkbox"); } }
+
+public interface UIFactory {
+    Button createButton();
+    Checkbox createCheckbox();
+}
+
+public class MacUIFactory implements UIFactory {
+    public Button createButton()     { return new MacButton(); }
+    public Checkbox createCheckbox() { return new MacCheckbox(); }
+}
+public class WindowsUIFactory implements UIFactory {
+    public Button createButton()     { return new WindowsButton(); }
+    public Checkbox createCheckbox() { return new WindowsCheckbox(); }
+}
+
+UIFactory factory = System.getProperty("os.name").contains("Mac")
+    ? new MacUIFactory() : new WindowsUIFactory();
+Button button = factory.createButton();   // correct family, consistent look
+```
 
 ### Builder
 
-Constructs complex objects step by step. Avoids telescoping constructors.
+Constructs complex objects step by step — avoids telescoping constructors.
 
 ```java
 public class HttpRequest {
-
     private final String url;
     private final String method;
     private final Map<String, String> headers;
     private final String body;
-    private final int timeoutSeconds;
+    private final int timeout;
 
     private HttpRequest(Builder builder) {
         this.url = builder.url;
         this.method = builder.method;
-        this.headers = Map.copyOf(builder.headers);
+        this.headers = builder.headers;
         this.body = builder.body;
-        this.timeoutSeconds = builder.timeoutSeconds;
+        this.timeout = builder.timeout;
     }
 
     public static class Builder {
-        private final String url;
-        private String method = "GET";
-        private final Map<String, String> headers = new LinkedHashMap<>();
+        private final String url;             // required
+        private String method = "GET";        // defaults
+        private Map<String, String> headers = new HashMap<>();
         private String body;
-        private int timeoutSeconds = 30;
+        private int timeout = 30000;
 
-        public Builder(String url) {
-            this.url = Objects.requireNonNull(url);
-        }
+        public Builder(String url) { this.url = url; }
 
         public Builder method(String method) { this.method = method; return this; }
-        public Builder header(String name, String value) { headers.put(name, value); return this; }
+        public Builder header(String key, String value) { headers.put(key, value); return this; }
         public Builder body(String body) { this.body = body; return this; }
-        public Builder timeout(int seconds) { this.timeoutSeconds = seconds; return this; }
+        public Builder timeout(int timeout) { this.timeout = timeout; return this; }
 
         public HttpRequest build() {
-            if (body != null && method.equals("GET")) {
-                throw new IllegalStateException("GET requests cannot have a body");
-            }
+            if (url == null || url.isBlank()) throw new IllegalStateException("URL required");
             return new HttpRequest(this);
         }
     }
 }
 
-// Usage
-HttpRequest request = new HttpRequest.Builder("https://api.example.com/users")
+HttpRequest request = new HttpRequest.Builder("https://api.example.com")
     .method("POST")
     .header("Content-Type", "application/json")
     .header("Authorization", "Bearer token")
-    .body("{\"name\": \"Alice\"}")
-    .timeout(10)
+    .body("{\"key\":\"value\"}")
+    .timeout(5000)
     .build();
+
+// Records partially replace Builder for simple immutable data — but Builder still wins
+// for objects with many OPTIONAL fields and complex validation
 ```
 
-**Tip:** Lombok's `@Builder` generates all of this automatically.
+### Prototype
+
+Creates new objects by copying an existing instance.
+
+```java
+public class Document implements Cloneable {
+    private String title;
+    private List<String> paragraphs;
+
+    @Override
+    public Document clone() {
+        try {
+            Document copy = (Document) super.clone();
+            copy.paragraphs = new ArrayList<>(this.paragraphs);  // deep copy mutable fields
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(e);  // can't happen — we implement Cloneable
+        }
+    }
+}
+
+// Records provide a similar capability via "with"-style copying (manual, since no native withers yet)
+public record Config(String env, int timeout, boolean debug) {
+    public Config withTimeout(int newTimeout) {
+        return new Config(env, newTimeout, debug);
+    }
+}
+Config base = new Config("prod", 5000, false);
+Config debugConfig = base.withTimeout(10000);
+```
 
 ---
 
 ## Structural Patterns
 
-Structural patterns deal with how classes and objects are composed.
+### Adapter
+
+Converts one interface into another that clients expect.
+
+```java
+// Existing legacy interface
+public interface LegacyPrinter {
+    void printDocument(String content);
+}
+
+// Target interface your app uses
+public interface ModernPrinter {
+    void print(Document doc);
+}
+
+// Adapter bridges them
+public class PrinterAdapter implements ModernPrinter {
+    private final LegacyPrinter legacyPrinter;
+
+    public PrinterAdapter(LegacyPrinter legacyPrinter) {
+        this.legacyPrinter = legacyPrinter;
+    }
+
+    @Override
+    public void print(Document doc) {
+        legacyPrinter.printDocument(doc.getContent());   // adapts the call
+    }
+}
+
+// Real-world example: Spring's JdbcTemplate adapts raw JDBC to a cleaner API
+// Another: java.util.Arrays.asList() adapts an array to the List interface
+```
 
 ### Decorator
 
-Adds behavior to an object dynamically without modifying its class.
+Adds behavior to objects dynamically without modifying their class.
 
 ```java
-public interface TextFormatter {
-    String format(String text);
+public interface Coffee {
+    double cost();
+    String description();
 }
 
-public class PlainTextFormatter implements TextFormatter {
-    public String format(String text) { return text; }
+public class SimpleCoffee implements Coffee {
+    public double cost() { return 2.0; }
+    public String description() { return "Coffee"; }
 }
 
-// Decorators wrap a formatter and add behavior
-public class UpperCaseDecorator implements TextFormatter {
-    private final TextFormatter wrapped;
-    public UpperCaseDecorator(TextFormatter wrapped) { this.wrapped = wrapped; }
-    public String format(String text) { return wrapped.format(text).toUpperCase(); }
+public abstract class CoffeeDecorator implements Coffee {
+    protected final Coffee decorated;
+    protected CoffeeDecorator(Coffee decorated) { this.decorated = decorated; }
 }
 
-public class TrimDecorator implements TextFormatter {
-    private final TextFormatter wrapped;
-    public TrimDecorator(TextFormatter wrapped) { this.wrapped = wrapped; }
-    public String format(String text) { return wrapped.format(text.trim()); }
+public class MilkDecorator extends CoffeeDecorator {
+    public MilkDecorator(Coffee decorated) { super(decorated); }
+    public double cost() { return decorated.cost() + 0.5; }
+    public String description() { return decorated.description() + ", Milk"; }
 }
 
-public class PrefixDecorator implements TextFormatter {
-    private final TextFormatter wrapped;
-    private final String prefix;
-    public PrefixDecorator(TextFormatter wrapped, String prefix) {
-        this.wrapped = wrapped;
-        this.prefix = prefix;
-    }
-    public String format(String text) { return prefix + wrapped.format(text); }
+public class SugarDecorator extends CoffeeDecorator {
+    public SugarDecorator(Coffee decorated) { super(decorated); }
+    public double cost() { return decorated.cost() + 0.2; }
+    public String description() { return decorated.description() + ", Sugar"; }
 }
 
-// Compose decorators
-TextFormatter formatter = new PrefixDecorator(
-    new UpperCaseDecorator(
-        new TrimDecorator(
-            new PlainTextFormatter()
-        )
-    ),
-    ">> "
-);
+Coffee order = new SugarDecorator(new MilkDecorator(new SimpleCoffee()));
+order.description()  // "Coffee, Milk, Sugar"
+order.cost()           // 2.7
 
-formatter.format("  hello world  "); // ">> HELLO WORLD"
+// Java's I/O streams are a classic Decorator example:
+InputStream is = new BufferedInputStream(new GZIPInputStream(new FileInputStream("file.gz")));
 ```
-
-**In Spring:** Servlet Filters and Spring AOP are decorator/proxy patterns applied at the framework level.
-
----
 
 ### Proxy
 
-Provides a surrogate or placeholder for another object to control access.
+Controls access to another object — for lazy loading, access control, logging, caching.
 
 ```java
-public interface UserRepository {
-    User findById(Long id);
-    void save(User user);
+public interface Image {
+    void display();
 }
 
-public class RealUserRepository implements UserRepository {
-    public User findById(Long id) { /* DB call */ return db.find(id); }
-    public void save(User user) { /* DB call */ db.save(user); }
-}
-
-// Caching proxy
-public class CachingUserRepository implements UserRepository {
-    private final UserRepository real;
-    private final Map<Long, User> cache = new ConcurrentHashMap<>();
-
-    public CachingUserRepository(UserRepository real) { this.real = real; }
-
-    public User findById(Long id) {
-        return cache.computeIfAbsent(id, real::findById);
+public class RealImage implements Image {
+    private final String filename;
+    public RealImage(String filename) {
+        this.filename = filename;
+        loadFromDisk();   // expensive
     }
-
-    public void save(User user) {
-        real.save(user);
-        cache.put(user.getId(), user);  // update cache
-    }
+    private void loadFromDisk() { System.out.println("Loading " + filename); }
+    public void display() { System.out.println("Displaying " + filename); }
 }
 
-// Logging proxy
-public class LoggingUserRepository implements UserRepository {
-    private final UserRepository real;
+// Virtual proxy — defers expensive creation until actually needed
+public class ImageProxy implements Image {
+    private final String filename;
+    private RealImage realImage;
 
-    public User findById(Long id) {
-        log.info("Finding user {}", id);
-        User user = real.findById(id);
-        log.info("Found user: {}", user.getName());
-        return user;
-    }
-    // ...
-}
-```
-
-**In Spring:** `@Transactional`, `@Cacheable`, `@Async` all work via Spring-generated proxies.
-
----
-
-### Adapter
-
-Converts one interface into another that clients expect — compatibility bridge.
-
-```java
-// Legacy payment gateway with old interface
-public class LegacyPaymentGateway {
-    public String processPaymentXml(String xmlPayload) { ... }
-}
-
-// Modern interface your application uses
-public interface PaymentProcessor {
-    PaymentResult charge(PaymentRequest request);
-}
-
-// Adapter bridges the gap
-public class LegacyGatewayAdapter implements PaymentProcessor {
-    private final LegacyPaymentGateway legacy;
-    private final XmlConverter converter;
+    public ImageProxy(String filename) { this.filename = filename; }
 
     @Override
-    public PaymentResult charge(PaymentRequest request) {
-        String xml = converter.toXml(request);
-        String responseXml = legacy.processPaymentXml(xml);
-        return converter.fromXml(responseXml, PaymentResult.class);
+    public void display() {
+        if (realImage == null) {
+            realImage = new RealImage(filename);   // lazy load
+        }
+        realImage.display();
     }
 }
 
-// Client uses modern interface — unaware of legacy system
-PaymentProcessor processor = new LegacyGatewayAdapter(new LegacyPaymentGateway(), converter);
-PaymentResult result = processor.charge(request);
+// Java dynamic proxies (used heavily by Spring AOP, Hibernate lazy loading)
+public class LoggingInvocationHandler implements InvocationHandler {
+    private final Object target;
+    public LoggingInvocationHandler(Object target) { this.target = target; }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        System.out.println("Calling: " + method.getName());
+        Object result = method.invoke(target, args);
+        System.out.println("Returned: " + result);
+        return result;
+    }
+}
+
+UserService realService = new UserServiceImpl();
+UserService proxy = (UserService) Proxy.newProxyInstance(
+    UserService.class.getClassLoader(),
+    new Class<?>[]{UserService.class},
+    new LoggingInvocationHandler(realService)
+);
+```
+
+### Facade
+
+Provides a simplified interface to a complex subsystem.
+
+```java
+// Complex subsystem
+public class CPU { void freeze() {} void jump(long pos) {} void execute() {} }
+public class Memory { void load(long pos, byte[] data) {} }
+public class HardDrive { byte[] read(long lba, int size) { return new byte[0]; } }
+
+// Facade — hides the complexity
+public class ComputerFacade {
+    private final CPU cpu = new CPU();
+    private final Memory memory = new Memory();
+    private final HardDrive hardDrive = new HardDrive();
+
+    public void start() {
+        cpu.freeze();
+        memory.load(0, hardDrive.read(0, 1024));
+        cpu.jump(0);
+        cpu.execute();
+    }
+}
+
+new ComputerFacade().start();   // simple call, hides all internal complexity
+
+// Real-world: Spring's JdbcTemplate is a facade over raw JDBC's complexity
+// (connection handling, statement preparation, resource cleanup, exception translation)
 ```
 
 ---
 
 ## Behavioral Patterns
 
-Behavioral patterns deal with communication between objects.
-
 ### Strategy
 
-Defines a family of algorithms, encapsulates each one, and makes them interchangeable.
+Defines a family of interchangeable algorithms.
 
 ```java
-public interface SortStrategy {
-    void sort(int[] array);
+public interface DiscountStrategy {
+    BigDecimal apply(BigDecimal price);
 }
 
-public class BubbleSort implements SortStrategy {
-    public void sort(int[] arr) { /* bubble sort implementation */ }
+public class NoDiscount implements DiscountStrategy {
+    public BigDecimal apply(BigDecimal price) { return price; }
 }
-
-public class QuickSort implements SortStrategy {
-    public void sort(int[] arr) { /* quicksort implementation */ }
-}
-
-public class MergeSort implements SortStrategy {
-    public void sort(int[] arr) { /* merge sort implementation */ }
-}
-
-public class DataProcessor {
-    private SortStrategy strategy;
-
-    public void setStrategy(SortStrategy strategy) {
-        this.strategy = strategy;
-    }
-
-    public void process(int[] data) {
-        strategy.sort(data);
-        // ... further processing
+public class PercentageDiscount implements DiscountStrategy {
+    private final BigDecimal percentage;
+    public PercentageDiscount(BigDecimal percentage) { this.percentage = percentage; }
+    public BigDecimal apply(BigDecimal price) {
+        return price.multiply(BigDecimal.ONE.subtract(percentage));
     }
 }
-
-// Runtime switch
-DataProcessor processor = new DataProcessor();
-processor.setStrategy(new QuickSort());
-processor.process(data);
-
-// Modern Java: strategies as lambdas when they fit a functional interface
-@FunctionalInterface
-interface PricingStrategy {
-    BigDecimal calculatePrice(Product product, int quantity);
+public class FixedDiscount implements DiscountStrategy {
+    private final BigDecimal amount;
+    public FixedDiscount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal apply(BigDecimal price) { return price.subtract(amount).max(BigDecimal.ZERO); }
 }
 
-PricingStrategy bulk    = (p, q) -> p.getPrice().multiply(BigDecimal.valueOf(q * 0.9));
-PricingStrategy regular = (p, q) -> p.getPrice().multiply(BigDecimal.valueOf(q));
-PricingStrategy premium = (p, q) -> p.getPrice().multiply(BigDecimal.valueOf(q * 1.2));
+public class PriceCalculator {
+    private DiscountStrategy strategy;
+    public void setStrategy(DiscountStrategy strategy) { this.strategy = strategy; }
+    public BigDecimal calculate(BigDecimal price) { return strategy.apply(price); }
+}
+
+PriceCalculator calc = new PriceCalculator();
+calc.setStrategy(new PercentageDiscount(new BigDecimal("0.20")));
+calc.calculate(new BigDecimal("100"));   // 80.00
+
+// Modern Java — lambdas ARE strategies for functional interfaces
+DiscountStrategy lambdaDiscount = price -> price.multiply(new BigDecimal("0.9"));
 ```
-
----
 
 ### Observer
 
-Defines a one-to-many dependency so when one object changes, all dependents are notified.
+Defines a one-to-many dependency — when one object changes state, all dependents are notified.
 
 ```java
-// Event (the state change)
-public record PriceChangedEvent(String productId, BigDecimal oldPrice, BigDecimal newPrice) {}
-
-// Observer interface
-public interface PriceObserver {
-    void onPriceChanged(PriceChangedEvent event);
+public interface Observer {
+    void update(String event);
 }
 
-// Subject (observable)
-public class PriceService {
-    private final List<PriceObserver> observers = new CopyOnWriteArrayList<>();
-
-    public void addObserver(PriceObserver observer) { observers.add(observer); }
-    public void removeObserver(PriceObserver observer) { observers.remove(observer); }
-
-    public void updatePrice(String productId, BigDecimal newPrice) {
-        BigDecimal oldPrice = getPrice(productId);
-        savePrice(productId, newPrice);
-
-        PriceChangedEvent event = new PriceChangedEvent(productId, oldPrice, newPrice);
-        observers.forEach(o -> o.onPriceChanged(event));
+public class EventPublisher {
+    private final List<Observer> observers = new ArrayList<>();
+    public void subscribe(Observer observer) { observers.add(observer); }
+    public void unsubscribe(Observer observer) { observers.remove(observer); }
+    public void publish(String event) {
+        observers.forEach(o -> o.update(event));
     }
 }
 
-// Concrete observers
-public class PriceAlertService implements PriceObserver {
-    public void onPriceChanged(PriceChangedEvent event) {
-        if (event.newPrice().compareTo(event.oldPrice()) < 0) {
-            notifyWishlistUsers(event.productId(), event.newPrice());
-        }
-    }
-}
+EventPublisher publisher = new EventPublisher();
+publisher.subscribe(event -> System.out.println("Logger: " + event));
+publisher.subscribe(event -> System.out.println("Analytics: " + event));
+publisher.publish("UserRegistered");
 
-public class PriceHistoryService implements PriceObserver {
-    public void onPriceChanged(PriceChangedEvent event) {
-        recordInHistory(event);
-    }
-}
+// Java's built-in support: java.beans.PropertyChangeListener (legacy)
+// Modern equivalent: Spring's ApplicationEventPublisher / @EventListener (see Spring Core page)
 ```
-
-**In Spring:** This is exactly what `ApplicationEvent` and `@EventListener` provide at the framework level.
-
----
 
 ### Template Method
 
-Defines the skeleton of an algorithm in a base class, deferring specific steps to subclasses.
+Defines the skeleton of an algorithm, deferring specific steps to subclasses.
 
 ```java
-public abstract class DataImporter {
+public abstract class DataProcessor {
 
-    // Template method — the algorithm skeleton
-    public final void importData(String source) {
-        List<String> rawData = readData(source);        // step 1
-        List<String> validated = validateData(rawData); // step 2
-        List<?> parsed = parseData(validated);          // step 3
-        saveData(parsed);                                // step 4
-        logImport(source, parsed.size());               // step 5 (concrete)
+    // Template method — defines the algorithm structure, marked final to prevent override
+    public final void process() {
+        readData();
+        validateData();
+        transformData();
+        saveData();
     }
 
-    // Subclass must implement
-    protected abstract List<String> readData(String source);
-    protected abstract List<?> parseData(List<String> data);
+    protected abstract void readData();
+    protected abstract void transformData();
 
-    // Subclass may override (has default behavior)
-    protected List<String> validateData(List<String> data) {
-        return data.stream().filter(line -> !line.isBlank()).toList();
-    }
-
-    protected abstract void saveData(List<?> data);
-
-    // Final — subclasses cannot override this step
-    private void logImport(String source, int count) {
-        System.out.printf("Imported %d records from %s%n", count, source);
-    }
+    // Default implementations subclasses MAY override
+    protected void validateData() { System.out.println("Default validation"); }
+    protected void saveData()     { System.out.println("Default save"); }
 }
 
-public class CsvImporter extends DataImporter {
-    protected List<String> readData(String path) { return Files.readAllLines(Path.of(path)); }
-    protected List<Product> parseData(List<String> lines) { /* parse CSV */ }
-    protected void saveData(List<?> data) { productRepository.saveAll((List<Product>) data); }
+public class CsvProcessor extends DataProcessor {
+    protected void readData()      { System.out.println("Reading CSV"); }
+    protected void transformData() { System.out.println("Transforming CSV data"); }
 }
 
-public class JsonImporter extends DataImporter {
-    protected List<String> readData(String url) { return fetchFromUrl(url); }
-    protected List<Product> parseData(List<String> lines) { /* parse JSON */ }
-    protected void saveData(List<?> data) { productRepository.saveAll((List<Product>) data); }
+public class JsonProcessor extends DataProcessor {
+    protected void readData()      { System.out.println("Reading JSON"); }
+    protected void transformData() { System.out.println("Transforming JSON data"); }
+    @Override
+    protected void validateData()  { System.out.println("Strict JSON schema validation"); }
 }
+
+new CsvProcessor().process();    // uses default validate/save, custom read/transform
 ```
-
----
 
 ### Command
 
-Encapsulates a request as an object, enabling undo/redo, queuing, and logging.
+Encapsulates a request as an object — enables undo, queuing, logging.
 
 ```java
 public interface Command {
@@ -457,28 +485,19 @@ public interface Command {
     void undo();
 }
 
-public class TransferMoneyCommand implements Command {
-    private final BankAccount from;
-    private final BankAccount to;
-    private final BigDecimal amount;
-    private boolean executed = false;
-
-    public void execute() {
-        from.debit(amount);
-        to.credit(amount);
-        executed = true;
-    }
-
-    public void undo() {
-        if (!executed) throw new IllegalStateException("Not yet executed");
-        to.debit(amount);
-        from.credit(amount);
-        executed = false;
-    }
+public class Light {
+    public void on()  { System.out.println("Light ON"); }
+    public void off() { System.out.println("Light OFF"); }
 }
 
-// Command invoker with history
-public class CommandProcessor {
+public class LightOnCommand implements Command {
+    private final Light light;
+    public LightOnCommand(Light light) { this.light = light; }
+    public void execute() { light.on(); }
+    public void undo()    { light.off(); }
+}
+
+public class CommandHistory {
     private final Deque<Command> history = new ArrayDeque<>();
 
     public void execute(Command command) {
@@ -486,27 +505,89 @@ public class CommandProcessor {
         history.push(command);
     }
 
-    public void undo() {
-        if (!history.isEmpty()) {
-            history.pop().undo();
-        }
+    public void undoLast() {
+        if (!history.isEmpty()) history.pop().undo();
     }
 }
+
+CommandHistory invoker = new CommandHistory();
+invoker.execute(new LightOnCommand(new Light()));
+invoker.undoLast();   // turns the light back off
+
+// Real-world: Runnable IS essentially the Command pattern in Java
+Runnable command = () -> System.out.println("Executing task");
+executorService.submit(command);
 ```
+
+### Chain of Responsibility
+
+Passes a request along a chain of handlers until one handles it.
+
+```java
+public abstract class Handler {
+    protected Handler next;
+    public Handler setNext(Handler next) { this.next = next; return next; }
+
+    public void handle(Request request) {
+        if (canHandle(request)) {
+            process(request);
+        } else if (next != null) {
+            next.handle(request);
+        } else {
+            System.out.println("No handler for request");
+        }
+    }
+
+    protected abstract boolean canHandle(Request request);
+    protected abstract void process(Request request);
+}
+
+public class AuthHandler extends Handler {
+    protected boolean canHandle(Request r) { return !r.isAuthenticated(); }
+    protected void process(Request r) { System.out.println("Authenticating..."); }
+}
+public class ValidationHandler extends Handler {
+    protected boolean canHandle(Request r) { return !r.isValid(); }
+    protected void process(Request r) { System.out.println("Validating..."); }
+}
+public class BusinessLogicHandler extends Handler {
+    protected boolean canHandle(Request r) { return true; }
+    protected void process(Request r) { System.out.println("Processing business logic..."); }
+}
+
+Handler chain = new AuthHandler();
+chain.setNext(new ValidationHandler()).setNext(new BusinessLogicHandler());
+chain.handle(new Request());
+
+// Real-world: Servlet Filters and Spring Security's filter chain ARE this pattern
+```
+
+---
+
+## When to Use Which Pattern
+
+| Problem | Pattern |
+|---|---|
+| Need exactly one instance, globally accessible | Singleton (or just a Spring `@Component`) |
+| Object creation logic varies by subtype | Factory Method / Abstract Factory |
+| Complex object with many optional parameters | Builder |
+| Need to wrap/adapt an incompatible interface | Adapter |
+| Add behavior dynamically without subclassing | Decorator |
+| Control or defer access to an expensive object | Proxy |
+| Simplify a complex subsystem's interface | Facade |
+| Swap algorithms at runtime | Strategy |
+| Notify multiple parts of the system on change | Observer |
+| Fixed algorithm steps, variable implementation | Template Method |
+| Need undo/redo or request queuing | Command |
+| Multiple potential handlers for a request | Chain of Responsibility |
 
 ---
 
 ## Summary
 
-Design patterns fall into three categories:
-
-- **Creational** — how objects are made: Singleton, Factory, Builder.
-- **Structural** — how objects are composed: Decorator, Proxy, Adapter.
-- **Behavioral** — how objects communicate: Strategy, Observer, Template Method, Command.
-
-**Key Takeaways:**
-- Spring uses patterns internally — `@Transactional` = Proxy, `@EventListener` = Observer, `@Cacheable` = Proxy, Filter chain = Chain of Responsibility.
-- Builder pattern is essential for creating complex, immutable objects (Lombok's `@Builder` generates it).
-- Strategy pattern is the clean alternative to long `if/else` chains based on type or mode.
-- Learn to recognize patterns in existing code — it's more valuable than memorizing definitions.
-- Modern Java lambdas simplify many patterns (Strategy becomes a functional interface; Observer becomes an event handler lambda).
+- Most "GoF patterns" in modern Java are partially or fully replaced by language features: lambdas (Strategy/Command), Spring DI (Singleton/Factory), records (immutable value objects).
+- Don't force patterns where they're not needed — a simple method is often better than a full pattern implementation.
+- Builder remains valuable for objects with many optional constructor parameters — records don't solve this well yet.
+- Decorator and Proxy both "wrap" an object, but Decorator ADDS behavior while Proxy CONTROLS access — know the distinction.
+- Spring's core architecture is itself a showcase of patterns: DI container (Factory), AOP (Proxy/Decorator), `ApplicationEventPublisher` (Observer), filter chains (Chain of Responsibility).
+- Recognizing patterns in frameworks you already use (Servlet Filters, I/O streams, JDBC templates) builds intuition faster than memorizing UML diagrams.

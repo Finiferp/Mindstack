@@ -1,524 +1,713 @@
 ---
-title: "Java Object-Oriented Programming"
+title: "Object-Oriented Programming"
 sidebar_label: "OOP"
 sidebar_position: 2
 ---
 
-# Object-Oriented Programming in Java
+# Object-Oriented Programming
 
-Object-Oriented Programming (OOP) is Java's core paradigm. Everything is organized around **objects** — bundles of state (fields) and behavior (methods). OOP makes large codebases manageable by modeling real-world concepts and enforcing clear boundaries between components.
+Java is built around objects. Understanding encapsulation, inheritance, polymorphism, and abstraction — and when to apply each — is the foundation of every Java program.
 
 ---
 
 ## Classes and Objects
 
-A **class** is a blueprint. An **object** is an instance of that blueprint, created with `new`.
-
 ```java
-public class Car {
-
-    // Fields (state)
-    private String brand;
-    private int year;
-    private double fuelLevel;
-
-    // Constructor — runs when you do `new Car(...)`
-    public Car(String brand, int year) {
-        this.brand = brand;
-        this.year = year;
-        this.fuelLevel = 1.0;
-    }
-
-    // Methods (behavior)
-    public void drive(double distance) {
-        fuelLevel -= distance * 0.05;
-        System.out.println("Driving " + distance + "km in " + brand);
-    }
-
-    public void refuel() {
-        fuelLevel = 1.0;
-    }
-
-    // Getters / Setters
-    public String getBrand() { return brand; }
-    public int getYear()     { return year; }
-    public double getFuelLevel() { return fuelLevel; }
-}
-```
-
-```java
-// Creating objects
-Car myCar = new Car("Toyota", 2022);
-myCar.drive(50);
-System.out.println(myCar.getFuelLevel());
-```
-
-**Tips:**
-- Make fields `private` by default — expose them through methods so you control access.
-- `this` refers to the current instance. It's required when a parameter name shadows a field name.
-- One class per file is the convention (the file must match the public class name).
-
----
-
-## Constructors
-
-Constructors initialize an object. You can have multiple constructors (**constructor overloading**).
-
-```java
+// Class definition
 public class Person {
+    // ── Fields ─────────────────────────────────────────────────────────────
+    private String name;       // instance field — each object gets its own
+    private int    age;
+    private String email;
 
-    private String name;
-    private int age;
+    // Static field — shared across ALL instances
+    private static int totalPersons = 0;
 
-    // No-arg constructor
+    // Constant
+    public static final int MAX_AGE = 150;
+
+    // ── Constructors ───────────────────────────────────────────────────────
+    // Default constructor — only auto-generated if you define NO constructors
     public Person() {
-        this("Unknown", 0); // delegate to another constructor
+        this.name  = "Unknown";
+        this.age   = 0;
+        totalPersons++;
     }
 
     // Parameterized constructor
     public Person(String name, int age) {
+        this.name = name;   // 'this' distinguishes field from parameter
+        this.age  = age;
+        this.email = "";
+        totalPersons++;
+    }
+
+    // Constructor chaining — call another constructor (must be first statement)
+    public Person(String name, int age, String email) {
+        this(name, age);    // call Person(String, int) above
+        this.email = email;
+    }
+
+    // ── Getters and Setters ────────────────────────────────────────────────
+    public String getName()  { return name; }
+    public int    getAge()   { return age; }
+    public String getEmail() { return email; }
+
+    public void setName(String name) {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("Name cannot be blank");
         this.name = name;
+    }
+    public void setAge(int age) {
+        if (age < 0 || age > MAX_AGE) throw new IllegalArgumentException("Invalid age: " + age);
         this.age = age;
     }
+    public void setEmail(String email) { this.email = email; }
 
-    // Copy constructor
-    public Person(Person other) {
-        this.name = other.name;
-        this.age = other.age;
+    // Static method
+    public static int getTotalPersons() { return totalPersons; }
+
+    // ── Object methods ─────────────────────────────────────────────────────
+    @Override
+    public String toString() {
+        return "Person{name='" + name + "', age=" + age + ", email='" + email + "'}";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;                  // same reference
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        Person other = (Person) obj;
+        return age == other.age && Objects.equals(name, other.name) && Objects.equals(email, other.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, age, email);
+        // Always override hashCode when overriding equals!
+        // Objects with same equals() result must have same hashCode
     }
 }
+
+// Creating and using objects
+Person alice = new Person("Alice", 30);
+Person bob   = new Person("Bob", 25, "bob@example.com");
+
+alice.getName()            // "Alice"
+alice.setAge(31);
+Person.getTotalPersons()   // 2
+
+// Objects.equals — null-safe equality
+Objects.equals(alice.getName(), null)    // false
+Objects.equals(null, null)               // true
+
+System.out.println(alice);  // Person{name='Alice', age=31, email=''}
 ```
 
-**Tips:**
-- If you define any constructor, Java no longer generates a default no-arg constructor automatically.
-- Use `this(...)` to call another constructor from within a constructor — keeps initialization logic in one place.
-- Constructor chaining keeps code DRY and avoids duplicated validation logic.
+---
+
+## Access Modifiers
+
+```java
+public    // accessible everywhere
+protected // accessible in same package + subclasses
+(default) // package-private — accessible only in same package (no keyword)
+private   // accessible only within the same class
+
+// Applies to: classes, fields, constructors, methods
+
+public class BankAccount {
+    private double balance;          // private field — only BankAccount can touch this
+    protected String accountNumber;  // subclasses can access
+    double interestRate;             // package-private
+    public String ownerName;         // public — anyone
+
+    public void deposit(double amount) {
+        validateAmount(amount);       // private method call — ok within class
+        balance += amount;
+    }
+
+    private void validateAmount(double amount) {
+        if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
+    }
+
+    public double getBalance() { return balance; }  // public getter for private field
+}
+```
 
 ---
 
 ## Encapsulation
 
-Encapsulation means hiding internal state and requiring all interaction to go through defined methods. This protects integrity and allows you to change internals without breaking callers.
+Encapsulation hides implementation details and exposes only what's needed.
 
 ```java
-public class BankAccount {
+public class Temperature {
+    private double celsius;   // store only in celsius internally
 
-    private double balance;
-
-    public BankAccount(double initialBalance) {
-        if (initialBalance < 0) throw new IllegalArgumentException("Balance cannot be negative");
-        this.balance = initialBalance;
+    public Temperature(double celsius) {
+        this.celsius = celsius;
     }
 
-    public void deposit(double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Deposit must be positive");
-        balance += amount;
+    // Multiple views — one underlying value
+    public double getCelsius()    { return celsius; }
+    public double getFahrenheit() { return celsius * 9.0 / 5.0 + 32; }
+    public double getKelvin()     { return celsius + 273.15; }
+
+    public void setCelsius(double celsius) {
+        if (celsius < -273.15) throw new IllegalArgumentException("Below absolute zero");
+        this.celsius = celsius;
+    }
+    public void setFahrenheit(double f) { setCelsius((f - 32) * 5.0 / 9.0); }
+    public void setKelvin(double k)     { setCelsius(k - 273.15); }
+
+    @Override public String toString() {
+        return String.format("%.1f°C / %.1f°F / %.1f K", celsius, getFahrenheit(), getKelvin());
     }
 
-    public void withdraw(double amount) {
-        if (amount > balance) throw new IllegalStateException("Insufficient funds");
-        balance -= amount;
+    public static Temperature ofFahrenheit(double f) {
+        return new Temperature((f - 32) * 5.0 / 9.0);
     }
-
-    public double getBalance() {
-        return balance;
+    public static Temperature ofKelvin(double k) {
+        return new Temperature(k - 273.15);
     }
-    // No setBalance() — balance changes only through controlled methods
 }
-```
 
-**Tips:**
-- Fields should almost always be `private`.
-- Validate in setters/constructors, not scattered throughout calling code.
-- Exposing fields directly with `public` makes refactoring very painful later.
+Temperature t = Temperature.ofFahrenheit(212);
+t.getCelsius()     // 100.0
+t.getKelvin()      // 373.15
+System.out.println(t); // "100.0°C / 212.0°F / 373.2 K"
+```
 
 ---
 
 ## Inheritance
 
-Inheritance lets one class (subclass) extend another (superclass), inheriting its fields and methods. Model **is-a** relationships.
-
 ```java
+// Superclass (parent)
 public class Animal {
-
     protected String name;
+    protected String sound;
 
-    public Animal(String name) {
-        this.name = name;
+    public Animal(String name, String sound) {
+        this.name  = name;
+        this.sound = sound;
+    }
+
+    public void speak() {
+        System.out.println(name + " says " + sound + "!");
     }
 
     public void eat() {
-        System.out.println(name + " is eating.");
+        System.out.println(name + " is eating");
     }
 
-    public String sound() {
-        return "...";
+    @Override
+    public String toString() {
+        return "Animal(" + name + ")";
     }
 }
 
+// Subclass (child) — inherits all non-private members
 public class Dog extends Animal {
-
     private String breed;
 
     public Dog(String name, String breed) {
-        super(name); // call parent constructor
+        super(name, "Woof");  // MUST call super constructor — FIRST statement
         this.breed = breed;
     }
 
+    // Override parent method
     @Override
-    public String sound() {
-        return "Woof!";
+    public void speak() {
+        System.out.print(breed + " dog: ");
+        super.speak();         // optionally call parent version
     }
 
-    public void fetch() {
-        System.out.println(name + " is fetching!");
+    // New method
+    public void fetch(String item) {
+        System.out.println(name + " fetches the " + item);
     }
-}
 
-public class Cat extends Animal {
-
-    public Cat(String name) {
-        super(name);
-    }
+    public String getBreed() { return breed; }
 
     @Override
-    public String sound() {
-        return "Meow!";
+    public String toString() {
+        return "Dog(" + name + ", " + breed + ")";
     }
 }
-```
 
-```java
-Dog dog = new Dog("Rex", "Labrador");
-dog.eat();         // inherited from Animal
-dog.fetch();       // Dog-specific
-System.out.println(dog.sound()); // "Woof!" — overridden
-```
+// Three levels
+public class GuideDog extends Dog {
+    private String owner;
 
-**Tips:**
-- Use `super(...)` to call the parent constructor; use `super.method()` to call a parent method.
-- `@Override` annotation is optional but highly recommended — it catches typos at compile time.
-- Prefer **composition over inheritance** when the relationship isn't clearly is-a. Inheritance creates tight coupling.
-- Java only supports **single inheritance** for classes (a class can extend only one class).
+    public GuideDog(String name, String breed, String owner) {
+        super(name, breed);
+        this.owner = owner;
+    }
 
----
+    @Override
+    public void speak() {
+        System.out.println("Guide dog for " + owner + ":");
+        super.speak();
+    }
 
-## Polymorphism
-
-Polymorphism means one interface, many implementations. A reference of the parent type can hold any subtype, and method calls resolve to the actual object's type at runtime.
-
-```java
-Animal[] animals = {
-    new Dog("Rex", "Lab"),
-    new Cat("Whiskers"),
-    new Dog("Buddy", "Poodle")
-};
-
-for (Animal a : animals) {
-    System.out.println(a.name + " says: " + a.sound());
-    // sound() dispatches to Dog or Cat implementation — runtime polymorphism
-}
-```
-
-### instanceof and Casting
-```java
-Animal a = new Dog("Rex", "Lab");
-
-if (a instanceof Dog dog) {         // pattern matching (Java 16+)
-    dog.fetch();                    // safe, no explicit cast needed
+    public void guide() {
+        System.out.println(name + " guides " + owner);
+    }
 }
 
-// Classic style (pre Java 16):
-if (a instanceof Dog) {
-    Dog dog = (Dog) a;
-    dog.fetch();
+// Usage
+Dog rex = new Dog("Rex", "Labrador");
+rex.speak();        // "Labrador dog: Rex says Woof!"
+rex.eat();          // inherited: "Rex is eating"
+rex.fetch("ball");  // "Rex fetches the ball"
+
+GuideDog buddy = new GuideDog("Buddy", "Retriever", "Alice");
+buddy.speak();     // "Guide dog for Alice:\nRetriever dog: Buddy says Woof!"
+buddy.guide();
+buddy.fetch("stick");  // still inherits this
+
+// instanceof checks
+rex instanceof Dog      // true
+rex instanceof Animal   // true
+rex instanceof GuideDog // false
+
+// Casting
+Animal a = new Dog("Spot", "Beagle");   // upcast — implicit, safe
+Dog d    = (Dog) a;                      // downcast — explicit, may throw ClassCastException
+if (a instanceof Dog dd) {
+    dd.fetch("ball");  // pattern matching — safe
+}
+
+// final prevents inheritance or overriding
+public final class ImmutableValue { }  // can't extend
+public class Parent {
+    public final void lockedMethod() { }  // can't override
 }
 ```
-
-**Tips:**
-- Design to the interface/supertype, not the concrete type — makes code extensible.
-- Avoid deep inheritance hierarchies (more than 2-3 levels gets hard to reason about).
-- Casting with `(Dog)` throws `ClassCastException` at runtime if the object is not actually a `Dog`. Always guard with `instanceof`.
 
 ---
 
 ## Abstract Classes
 
-An **abstract class** cannot be instantiated. It can contain abstract methods (no body, subclass must implement) and concrete methods (with body).
-
 ```java
+// Abstract class — cannot be instantiated, may have abstract methods
 public abstract class Shape {
-
-    private String color;
+    protected String color;
 
     public Shape(String color) {
         this.color = color;
     }
 
-    // Abstract — subclasses must implement
+    // Abstract method — must be overridden in non-abstract subclasses
     public abstract double area();
     public abstract double perimeter();
 
-    // Concrete — shared behavior
+    // Concrete method — shared implementation
     public void describe() {
-        System.out.printf("%s shape: area=%.2f, perimeter=%.2f%n",
-            color, area(), perimeter());
+        System.out.printf("%s %s: area=%.2f, perimeter=%.2f%n",
+            color, getClass().getSimpleName(), area(), perimeter());
     }
+
+    // Concrete method calling abstract — Template Method pattern
+    public boolean isLargerThan(Shape other) {
+        return this.area() > other.area();
+    }
+
+    public String getColor() { return color; }
 }
 
 public class Circle extends Shape {
-
-    private double radius;
+    private final double radius;
 
     public Circle(String color, double radius) {
         super(color);
         this.radius = radius;
     }
 
-    @Override
-    public double area() {
-        return Math.PI * radius * radius;
-    }
-
-    @Override
-    public double perimeter() {
-        return 2 * Math.PI * radius;
-    }
+    @Override public double area()      { return Math.PI * radius * radius; }
+    @Override public double perimeter() { return 2 * Math.PI * radius; }
 }
 
 public class Rectangle extends Shape {
-
-    private double width, height;
+    private final double width, height;
 
     public Rectangle(String color, double width, double height) {
         super(color);
-        this.width = width;
+        this.width  = width;
         this.height = height;
     }
 
-    @Override
-    public double area() { return width * height; }
-
-    @Override
-    public double perimeter() { return 2 * (width + height); }
+    @Override public double area()      { return width * height; }
+    @Override public double perimeter() { return 2 * (width + height); }
 }
-```
 
-**Tips:**
-- Use abstract classes when subclasses share significant implementation (constructor logic, concrete methods).
-- Use an interface when you only need to define a contract without shared implementation.
-- Abstract classes can have constructors, fields, and state — interfaces (prior to Java 8 defaults) cannot.
+// Polymorphism — treat different types uniformly via common type
+List<Shape> shapes = List.of(
+    new Circle("red", 5),
+    new Rectangle("blue", 4, 6)
+);
+
+for (Shape s : shapes) {
+    s.describe();  // calls the correct override for each type
+}
+
+double totalArea = shapes.stream().mapToDouble(Shape::area).sum();
+```
 
 ---
 
 ## Interfaces
 
-An **interface** defines a pure contract — a list of methods a class promises to implement. A class can implement multiple interfaces (solving the single-inheritance limitation).
+An interface is a contract — it defines what a class can do, not how.
 
 ```java
-public interface Flyable {
-    void fly();
-    default String getDescription() {
-        return "I can fly!";
+// Interface — all methods are public by default
+public interface Drawable {
+    // Abstract method (implicitly public abstract)
+    void draw();
+
+    // Default method — has implementation, can be overridden
+    default void drawWithBorder() {
+        System.out.println("=== Border ===");
+        draw();
+        System.out.println("=============");
     }
+
+    // Static method
+    static Drawable noop() {
+        return () -> {};  // lambda implementing the interface
+    }
+
+    // Constant (implicitly public static final)
+    int DEFAULT_SIZE = 100;
 }
 
-public interface Swimmable {
-    void swim();
+// Multiple interface implementation
+public interface Resizable {
+    void resize(double factor);
+    default void doubleSize() { resize(2.0); }
+    default void halveSize()  { resize(0.5); }
 }
 
-public class Duck extends Animal implements Flyable, Swimmable {
-
-    public Duck(String name) {
-        super(name);
-    }
-
-    @Override
-    public void fly() {
-        System.out.println(name + " is flying!");
-    }
-
-    @Override
-    public void swim() {
-        System.out.println(name + " is swimming!");
-    }
-
-    @Override
-    public String sound() {
-        return "Quack!";
-    }
+public interface Serializable {
+    String serialize();
+    static Drawable deserialize(String data) { return null; }
 }
-```
 
-### Functional Interfaces (Java 8+)
-An interface with exactly one abstract method is a **functional interface**. It can be implemented with a lambda.
+// Implement multiple interfaces
+public class Widget implements Drawable, Resizable, Serializable {
+    private double size;
+    private String label;
 
-```java
+    public Widget(String label, double size) {
+        this.label = label;
+        this.size  = size;
+    }
+
+    @Override public void draw() {
+        System.out.println("Drawing " + label + " (size=" + size + ")");
+    }
+    @Override public void resize(double factor) { this.size *= factor; }
+    @Override public String serialize() { return label + ":" + size; }
+}
+
+// Extend interfaces
+public interface AdvancedDrawable extends Drawable, Resizable {
+    void drawAt(int x, int y);
+}
+
+// Functional interface — exactly ONE abstract method (can use with lambdas)
 @FunctionalInterface
-public interface Transformer {
-    String transform(String input);
+public interface Transformer<T, R> {
+    R transform(T input);
+    // Can have default and static methods
+    default <V> Transformer<T, V> andThen(Transformer<R, V> after) {
+        return input -> after.transform(this.transform(input));
+    }
 }
 
-Transformer upper = s -> s.toUpperCase();
-Transformer shout = s -> s + "!!!";
+// Lambda implements functional interface
+Transformer<String, Integer> length = String::length;
+Transformer<String, String>  upper  = String::toUpperCase;
+Transformer<String, String>  shout  = upper.andThen(s -> s + "!");
 
-System.out.println(upper.transform("hello")); // "HELLO"
-System.out.println(shout.transform("hello")); // "hello!!!"
+System.out.println(shout.transform("hello"));  // "HELLO!"
 ```
 
-**Tips:**
-- Prefer interfaces over abstract classes for defining contracts.
-- `default` methods (Java 8+) let you add new methods to an interface without breaking existing implementations.
-- `static` methods in interfaces act as utility methods scoped to the interface.
-- Use `@FunctionalInterface` to get a compile-time error if you accidentally add a second abstract method.
+### Interface vs Abstract Class
+
+| Feature | Interface | Abstract Class |
+|---|---|---|
+| Multiple inheritance | Yes (implement many) | No (extend one) |
+| Fields | `public static final` only | Any |
+| Constructor | No | Yes |
+| Access modifiers | All public by default | Any modifier |
+| Use when | Defining capabilities | Sharing implementation |
 
 ---
 
-## Static Members
-
-`static` members belong to the **class**, not to any instance.
+## Polymorphism
 
 ```java
-public class Counter {
+// Runtime polymorphism — method resolved at runtime based on actual type
+Animal animal = new Dog("Rex", "Labrador");
+animal.speak();  // calls Dog.speak(), not Animal.speak()
+// This is called dynamic dispatch / late binding
 
-    private static int count = 0;  // shared across all instances
-    private int id;
+// Compile-time polymorphism — method overloading
+class Printer {
+    void print(int n)    { System.out.println("int: " + n); }
+    void print(double d) { System.out.println("double: " + d); }
+    void print(String s) { System.out.println("String: " + s); }
+}
+// Which print() is called is decided at compile time based on argument type
 
-    public Counter() {
-        count++;
-        this.id = count;
-    }
+// Storing subclass in superclass variable
+List<Animal> zoo = new ArrayList<>();
+zoo.add(new Dog("Rex", "Labrador"));
+zoo.add(new Cat("Whiskers"));
+zoo.add(new Bird("Tweety"));
 
-    public static int getCount() {
-        return count;
-    }
-
-    public int getId() {
-        return id;
+for (Animal a : zoo) {
+    a.speak();  // each animal speaks in its own way
+    if (a instanceof Dog d) {
+        d.fetch("ball");  // specific behavior only for Dogs
     }
 }
 ```
-
-```java
-Counter a = new Counter(); // count = 1
-Counter b = new Counter(); // count = 2
-Counter c = new Counter(); // count = 3
-
-System.out.println(Counter.getCount()); // 3
-System.out.println(c.getId());          // 3
-```
-
-**Tips:**
-- Static fields are initialized once when the class loads.
-- Static methods cannot access instance fields or `this`.
-- Use static for utility methods (`Math.sqrt()`), constants (`static final`), and factory methods.
-- Overusing static state makes code hard to test (shared mutable state = hidden coupling).
 
 ---
 
 ## Enums
 
-Enums are a special class type with a fixed set of named constants. They're much safer than using raw strings or ints.
-
 ```java
+// Basic enum
 public enum Day {
     MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY;
 
     public boolean isWeekend() {
         return this == SATURDAY || this == SUNDAY;
     }
+    public boolean isWeekday() { return !isWeekend(); }
 }
-```
 
-```java
-Day today = Day.FRIDAY;
-System.out.println(today.isWeekend()); // false
-System.out.println(today.name());      // "FRIDAY"
-System.out.println(today.ordinal());   // 4
+Day today = Day.WEDNESDAY;
+today.name()              // "WEDNESDAY" — string name
+today.ordinal()           // 2 — zero-based position
+Day.valueOf("FRIDAY")     // Day.FRIDAY
+Day.values()              // Day[] — all values
 
-// Enums work great in switch
-String type = switch (today) {
-    case MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY -> "Weekday";
-    case SATURDAY, SUNDAY -> "Weekend";
-};
-```
-
-**Enums with Fields:**
-```java
+// Rich enum — with fields and methods
 public enum Planet {
     MERCURY(3.303e+23, 2.4397e6),
     VENUS  (4.869e+24, 6.0518e6),
-    EARTH  (5.976e+24, 6.37814e6);
+    EARTH  (5.976e+24, 6.37814e6),
+    MARS   (6.421e+23, 3.3972e6);
 
-    private final double mass;
-    private final double radius;
+    private final double mass;    // kg
+    private final double radius;  // m
 
     Planet(double mass, double radius) {
-        this.mass = mass;
+        this.mass   = mass;
         this.radius = radius;
     }
 
-    public double surfaceGravity() {
-        final double G = 6.67300E-11;
-        return G * mass / (radius * radius);
-    }
-}
-```
+    static final double G = 6.67300E-11;
 
-**Tips:**
-- Always use enums instead of `int` or `String` constants for a fixed set of values.
-- Enums are implicitly `public static final` and are singletons by design.
-- `Enum.values()` returns all constants as an array — useful for iteration.
+    double surfaceGravity() { return G * mass / (radius * radius); }
+    double surfaceWeight(double otherMass) { return otherMass * surfaceGravity(); }
+}
+
+double earthWeight = 75.0;  // kg
+double mass = earthWeight / Planet.EARTH.surfaceGravity();
+for (Planet p : Planet.values()) {
+    System.out.printf("Weight on %s: %.2f%n", p, p.surfaceWeight(mass));
+}
+
+// Enum in switch
+Day day = Day.MONDAY;
+String type = switch (day) {
+    case MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY -> "Weekday";
+    case SATURDAY, SUNDAY                              -> "Weekend";
+};
+
+// Enum with abstract method
+public enum Operation {
+    PLUS("+")   { @Override public double apply(double x, double y) { return x + y; } },
+    MINUS("-")  { @Override public double apply(double x, double y) { return x - y; } },
+    TIMES("*")  { @Override public double apply(double x, double y) { return x * y; } },
+    DIVIDE("/") { @Override public double apply(double x, double y) { return x / y; } };
+
+    private final String symbol;
+    Operation(String symbol) { this.symbol = symbol; }
+    public abstract double apply(double x, double y);
+    @Override public String toString() { return symbol; }
+}
+
+for (Operation op : Operation.values()) {
+    System.out.printf("%.0f %s %.0f = %.0f%n", 6.0, op, 2.0, op.apply(6, 2));
+}
+
+// EnumSet and EnumMap
+EnumSet<Day> weekend = EnumSet.of(Day.SATURDAY, Day.SUNDAY);
+EnumSet<Day> weekdays = EnumSet.complementOf(weekend);
+EnumMap<Day, String> schedule = new EnumMap<>(Day.class);
+schedule.put(Day.MONDAY, "Meeting");
+```
 
 ---
 
 ## Records (Java 16+)
 
-Records are concise immutable data carriers. They auto-generate constructor, getters, `equals`, `hashCode`, and `toString`.
+Records are immutable data carriers — no boilerplate.
 
 ```java
-public record Point(int x, int y) {}
+// Record — auto-generates: constructor, getters, equals, hashCode, toString
+public record Point(double x, double y) {}
 
+Point p = new Point(3.0, 4.0);
+p.x()          // 3.0 — accessor (not getX())
+p.y()          // 4.0
+p.equals(new Point(3.0, 4.0))  // true
+p.hashCode()                   // consistent with equals
+System.out.println(p)          // "Point[x=3.0, y=4.0]"
+
+// Record with custom methods
 public record Person(String name, int age) {
-    // Compact constructor for validation
+    // Compact canonical constructor — validates
     public Person {
-        if (age < 0) throw new IllegalArgumentException("Age cannot be negative");
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("Name required");
+        if (age < 0 || age > 150)           throw new IllegalArgumentException("Invalid age: " + age);
+        name = name.trim();  // can modify before assignment
+    }
+
+    // Custom method
+    public boolean isAdult() { return age >= 18; }
+
+    // Static factory
+    public static Person of(String name, int age) {
+        return new Person(name, age);
+    }
+
+    // Override accessor
+    public String name() {
+        return name.toUpperCase();  // transform on access
     }
 }
+
+// Records can implement interfaces
+public record Money(BigDecimal amount, Currency currency) implements Comparable<Money> {
+    @Override
+    public int compareTo(Money other) {
+        if (!this.currency.equals(other.currency)) throw new IllegalArgumentException("Different currencies");
+        return this.amount.compareTo(other.amount);
+    }
+}
+
+// Generic record
+public record Pair<A, B>(A first, B second) {
+    public <C> Pair<A, C> mapSecond(java.util.function.Function<B, C> fn) {
+        return new Pair<>(first, fn.apply(second));
+    }
+}
+Pair<String, Integer> pair = new Pair<>("hello", 5);
 ```
+
+---
+
+## Nested Classes
 
 ```java
-Point p = new Point(3, 4);
-System.out.println(p.x());     // 3
-System.out.println(p.y());     // 4
-System.out.println(p);         // Point[x=3, y=4]
+public class Outer {
+    private int x = 10;
 
-Person alice = new Person("Alice", 30);
-Person aliceCopy = new Person("Alice", 30);
-System.out.println(alice.equals(aliceCopy)); // true — value equality
+    // Inner class — has access to outer instance
+    class Inner {
+        void show() {
+            System.out.println("x = " + x);   // accesses outer.x
+            System.out.println(Outer.this.x);  // explicit outer reference
+        }
+    }
+
+    // Static nested class — does NOT have access to outer instance
+    static class StaticNested {
+        void show() {
+            // System.out.println(x);  // compile error — no outer instance
+        }
+    }
+
+    void method() {
+        // Local class — defined inside a method
+        class Local {
+            void show() { System.out.println("local"); }
+        }
+        new Local().show();
+
+        // Anonymous class — one-time implementation
+        Runnable r = new Runnable() {
+            @Override
+            public void run() { System.out.println("anonymous run"); }
+        };
+        r.run();
+    }
+}
+
+// Usage
+Outer outer = new Outer();
+Outer.Inner inner = outer.new Inner();   // inner class needs outer instance
+inner.show();
+
+Outer.StaticNested sn = new Outer.StaticNested();  // no outer instance needed
 ```
 
-**Tips:**
-- Use records for DTOs, value objects, and any class whose purpose is purely to carry data.
-- Records are implicitly `final` — they cannot be extended.
-- You can add methods to records but you cannot add non-static fields.
+---
+
+## Object Class Methods
+
+Every class in Java implicitly extends `Object`. These methods are available on everything.
+
+```java
+Object obj = new Object();
+
+obj.toString()              // default: "ClassName@hexHashCode"
+obj.equals(other)           // default: reference equality (==)
+obj.hashCode()              // default: based on memory address
+obj.getClass()              // returns Class<?>
+obj.getClass().getName()    // "com.example.MyClass"
+obj.getClass().getSimpleName() // "MyClass"
+obj.clone()                 // shallow copy (must implement Cloneable)
+obj.finalize()              // deprecated — called before GC (don't use)
+
+// Thread-related (covered in concurrency)
+obj.wait()
+obj.wait(timeout)
+obj.notify()
+obj.notifyAll()
+
+// Objects utility class
+Objects.equals(a, b)         // null-safe equals
+Objects.hash(a, b, c)        // combined hash code
+Objects.toString(obj)        // null-safe toString
+Objects.toString(obj, "default") // with null fallback
+Objects.requireNonNull(obj)  // throws NullPointerException if null
+Objects.requireNonNull(obj, "Message")
+Objects.requireNonNullElse(obj, defaultValue)  // Java 9+
+Objects.requireNonNullElseGet(obj, supplier)
+Objects.isNull(obj)          // obj == null
+Objects.nonNull(obj)         // obj != null
+Objects.deepEquals(a, b)     // works for arrays too
+```
 
 ---
 
 ## Summary
 
-OOP in Java gives you powerful tools for structuring code:
-
-- **Classes and objects** — blueprints and their instances.
-- **Encapsulation** — hide state, expose behavior.
-- **Inheritance** — share code up a type hierarchy with `extends`.
-- **Polymorphism** — one reference type, many runtime behaviors.
-- **Abstract classes** — partial implementations that enforce a contract.
-- **Interfaces** — pure contracts enabling multiple type hierarchies.
-- **Enums and records** — concise, safe types for constants and data.
-
-**Key Takeaways:**
-- Favor composition over deep inheritance trees.
-- Program to interfaces, not concrete implementations.
-- Keep classes focused: one clear responsibility per class (Single Responsibility Principle).
-- Use `@Override` always, encapsulate fields as `private`, and validate in constructors.
+- Encapsulate: keep fields `private`, expose via controlled getters/setters.
+- Inherit only when there is a true "is-a" relationship — prefer composition otherwise.
+- Use interfaces to define capabilities and contracts; abstract classes for shared implementation.
+- Always override `equals()` and `hashCode()` together — and follow the contract.
+- Records are the right tool for immutable data holders — no boilerplate, no mutability bugs.
+- `final` on a class prevents inheritance, on a method prevents overriding, on a field prevents reassignment.
+- Enum fields are public constants by default; rich enums can carry data and behaviour.

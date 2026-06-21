@@ -6,358 +6,436 @@ sidebar_position: 18
 
 # Modern Java Features
 
-Java has evolved rapidly since Java 8. Each LTS release (Java 11, 17, 21) added features that change how idiomatic Java looks — sealed classes, pattern matching, records, text blocks, and virtual threads. These aren't novelties; they actively reduce boilerplate and make code safer.
+Java has evolved significantly since version 8. This covers the key language features added from Java 9 through 21+ that make modern Java code more concise and expressive.
+
+---
+
+## var — Local Variable Type Inference (Java 10)
+
+```java
+var name    = "Alice";              // inferred: String
+var age     = 30;                   // inferred: int
+var list    = new ArrayList<String>(); // inferred: ArrayList<String>
+var map     = new HashMap<String, List<Integer>>(); // inferred: HashMap<String, List<Integer>>
+
+// In for loops
+for (var i = 0; i < 10; i++) { }
+for (var entry : map.entrySet()) { }
+
+// var CANNOT be used for:
+// - fields
+// - method parameters
+// - method return types
+// - uninitialized variables: var x;  // error
+// - null: var x = null;              // error — can't infer type
+// - lambda without explicit target type
+
+// Best practice: use var when the type is obvious from the right side
+var users = userRepository.findAll();   // good — clear from method name
+var x = compute();                       // bad — unclear what x is, prefer explicit type
+```
 
 ---
 
 ## Text Blocks (Java 15)
 
-Text blocks are multi-line string literals that preserve formatting without escape sequences.
-
 ```java
-// Before text blocks
+// Old way — error-prone, hard to read
 String json = "{\n" +
-              "    \"name\": \"Alice\",\n" +
-              "    \"age\": 30\n" +
-              "}";
+    "  \"name\": \"Alice\",\n" +
+    "  \"age\": 30\n" +
+    "}";
 
-String sql = "SELECT u.name, u.email\n" +
-             "FROM users u\n" +
-             "WHERE u.active = true\n" +
-             "ORDER BY u.name";
-
-// With text blocks (Java 15+)
+// Text block — clean, preserves formatting
 String json = """
     {
-        "name": "Alice",
-        "age": 30
+      "name": "Alice",
+      "age": 30
     }
     """;
 
-String sql = """
-    SELECT u.name, u.email
+// Indentation is determined by the closing """ position
+String html = """
+        <html>
+            <body>
+                <p>Hello, World!</p>
+            </body>
+        </html>
+        """;
+
+// Interpolation via formatted() (Java 15+)
+String name = "Alice";
+int age = 30;
+String message = """
+    Name: %s
+    Age: %d
+    """.formatted(name, age);
+
+// Escape sequences still work
+String withQuotes = """
+    She said "hello" to me.
+    """;
+
+// \ at end of line suppresses the newline
+String noNewline = """
+    This is one \
+    continuous line.
+    """;
+
+// Useful for SQL, JSON, HTML in code
+String query = """
+    SELECT u.id, u.name, u.email
     FROM users u
     WHERE u.active = true
     ORDER BY u.name
     """;
-
-String html = """
-    <html>
-        <body>
-            <h1>Hello, %s!</h1>
-        </body>
-    </html>
-    """.formatted("Alice");
 ```
-
-**Tips:**
-- Indentation is stripped up to the least-indented line. The closing `"""` controls the baseline indentation.
-- Use `.formatted(args)` on text blocks for interpolation — cleaner than `String.format()`.
-- Text blocks work perfectly for embedding SQL, JSON, HTML, and YAML in tests or configuration.
 
 ---
 
 ## Records (Java 16)
 
-Records are immutable data carriers. The compiler auto-generates constructor, accessors, `equals()`, `hashCode()`, and `toString()`.
-
 ```java
-// Replaces 30+ lines of boilerplate
+// Immutable data carrier — auto-generates constructor, accessors, equals, hashCode, toString
 public record Point(int x, int y) {}
 
-// With validation (compact constructor)
-public record Product(String name, BigDecimal price, int stock) {
-    public Product {
-        Objects.requireNonNull(name, "name cannot be null");
-        if (price.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("price cannot be negative");
-        if (stock < 0) throw new IllegalArgumentException("stock cannot be negative");
+Point p = new Point(3, 4);
+p.x()        // 3 — note: x(), not getX()
+p.y()        // 4
+p.toString() // "Point[x=3, y=4]"
+p.equals(new Point(3, 4))  // true
+
+// Compact constructor — validation/normalization
+public record Range(int min, int max) {
+    public Range {   // no parameter list — implicit
+        if (min > max) throw new IllegalArgumentException("min > max");
     }
 }
 
-// With custom methods
+// Custom methods
 public record Money(BigDecimal amount, String currency) {
-
-    // Static factory
-    public static Money of(double amount, String currency) {
-        return new Money(BigDecimal.valueOf(amount), currency);
-    }
-
-    // Derived value
     public Money add(Money other) {
         if (!currency.equals(other.currency)) throw new IllegalArgumentException("Currency mismatch");
         return new Money(amount.add(other.amount), currency);
     }
+}
 
-    public boolean isPositive() {
-        return amount.compareTo(BigDecimal.ZERO) > 0;
+// Static factory methods
+public record Email(String value) {
+    public static Email of(String value) {
+        if (!value.contains("@")) throw new IllegalArgumentException("Invalid email");
+        return new Email(value);
     }
 }
 
-// Records are great for API DTOs
-public record CreateUserRequest(
-    @NotBlank String name,
-    @Email String email,
-    @Size(min = 8) String password
-) {}
+// Records implementing interfaces
+public record Circle(double radius) implements Shape {
+    public double area() { return Math.PI * radius * radius; }
+}
 
-public record UserResponse(Long id, String name, String email, LocalDateTime createdAt) {}
-```
+// Generic records
+public record Pair<A, B>(A first, B second) {}
 
-```java
-Point p1 = new Point(3, 4);
-Point p2 = new Point(3, 4);
-
-p1.x();          // 3 — accessor (not getX())
-p1.equals(p2);   // true — value equality
-p1.toString();   // "Point[x=3, y=4]"
+// Records as DTOs (very common pattern)
+public record CreateUserRequest(String name, String email) {}
+public record UserResponse(Long id, String name, String email, Instant createdAt) {}
 ```
 
 ---
 
 ## Sealed Classes (Java 17)
 
-Sealed classes restrict which classes can extend or implement them. They're the foundation of algebraic data types in Java.
+Sealed classes restrict which classes can extend/implement them — enables exhaustive pattern matching.
 
 ```java
-// Only these three classes can implement Shape
 public sealed interface Shape permits Circle, Rectangle, Triangle {}
 
 public record Circle(double radius) implements Shape {}
 public record Rectangle(double width, double height) implements Shape {}
 public record Triangle(double base, double height) implements Shape {}
+
+// Exhaustive switch — compiler ENFORCES all cases are handled, no default needed!
+double area(Shape shape) {
+    return switch (shape) {
+        case Circle c    -> Math.PI * c.radius() * c.radius();
+        case Rectangle r -> r.width() * r.height();
+        case Triangle t  -> 0.5 * t.base() * t.height();
+        // No default needed — compiler knows these are ALL possible subtypes
+    };
+}
+
+// Sealed classes (not just interfaces)
+public abstract sealed class Vehicle permits Car, Truck, Motorcycle {
+    protected String make;
+}
+public final class Car extends Vehicle { }            // final — no further extension
+public non-sealed class Truck extends Vehicle { }      // non-sealed — open for extension
+public sealed class Motorcycle extends Vehicle permits SportBike {}
+public final class SportBike extends Motorcycle {}
+
+// Permitted subclasses must be: final, sealed, or non-sealed (explicit choice required)
+
+// Sealed + records = great for representing algebraic data types / Result types
+public sealed interface Result<T> permits Success, Failure {}
+public record Success<T>(T value) implements Result<T> {}
+public record Failure<T>(String error) implements Result<T> {}
+
+<T> String describe(Result<T> result) {
+    return switch (result) {
+        case Success<T> s -> "Got: " + s.value();
+        case Failure<T> f -> "Error: " + f.error();
+    };
+}
 ```
 
+---
+
+## Pattern Matching
+
+### instanceof Pattern Matching (Java 16)
+
 ```java
-// Pattern matching switch knows it's exhaustive
-double area = switch (shape) {
-    case Circle c       -> Math.PI * c.radius() * c.radius();
-    case Rectangle r    -> r.width() * r.height();
-    case Triangle t     -> 0.5 * t.base() * t.height();
-    // No default needed — compiler knows all cases are covered
+Object obj = "hello";
+
+// Old way
+if (obj instanceof String) {
+    String s = (String) obj;
+    System.out.println(s.length());
+}
+
+// Pattern matching — combines check and cast
+if (obj instanceof String s) {
+    System.out.println(s.length());   // s is already typed as String
+}
+
+// Combine with conditions
+if (obj instanceof String s && s.length() > 5) {
+    System.out.println(s.toUpperCase());
+}
+
+// Negated pattern with early return
+if (!(obj instanceof String s)) {
+    return;
+}
+System.out.println(s.length());   // s is in scope here too (flow typing)
+```
+
+### switch Pattern Matching (Java 21)
+
+```java
+Object obj = 42;
+
+String description = switch (obj) {
+    case Integer i when i > 0  -> "Positive integer: " + i;
+    case Integer i when i < 0  -> "Negative integer: " + i;
+    case Integer i              -> "Zero";
+    case String s when s.isBlank() -> "Blank string";
+    case String s                   -> "String: " + s;
+    case null                       -> "It's null";
+    default                          -> "Something else: " + obj;
 };
+
+// Record patterns (Java 21) — destructure records directly in switch
+public record Point(int x, int y) {}
+public record Line(Point start, Point end) {}
+
+String describe(Object obj) {
+    return switch (obj) {
+        case Point(int x, int y) when x == y -> "Diagonal point";
+        case Point(int x, int y)              -> "Point at " + x + "," + y;
+        case Line(Point(var x1, var y1), Point(var x2, var y2)) ->
+            "Line from (" + x1 + "," + y1 + ") to (" + x2 + "," + y2 + ")";
+        default -> "Unknown";
+    };
+}
+
+// Nested record patterns
+sealed interface Shape permits Circle, Square {}
+record Circle(Point center, double radius) implements Shape {}
+record Square(Point topLeft, double side) implements Shape {}
+
+String position(Shape shape) {
+    return switch (shape) {
+        case Circle(Point(var x, var y), var r) -> "Circle at (%d,%d) r=%.1f".formatted(x, y, r);
+        case Square(Point(var x, var y), var s)  -> "Square at (%d,%d) side=%.1f".formatted(x, y, s);
+    };
+}
 ```
 
+---
+
+## Switch Expressions (Java 14)
+
 ```java
-// Real-world: result type (like Rust's Result)
-public sealed interface ApiResult<T> permits ApiResult.Success, ApiResult.Error {}
+// Old switch statement — verbose, fall-through prone
+int numLetters;
+switch (day) {
+    case MONDAY:
+    case FRIDAY:
+    case SUNDAY:
+        numLetters = 6;
+        break;
+    case TUESDAY:
+        numLetters = 7;
+        break;
+    default:
+        numLetters = 0;
+}
 
-public record Success<T>(T data) implements ApiResult<T> {}
-public record Error<T>(String code, String message) implements ApiResult<T> {}
+// Switch expression — concise, exhaustive, no fall-through
+int numLetters = switch (day) {
+    case MONDAY, FRIDAY, SUNDAY -> 6;
+    case TUESDAY                 -> 7;
+    default                       -> 0;
+};
 
-// Caller handles all cases
-ApiResult<User> result = userService.findUser(id);
-String response = switch (result) {
-    case Success<User> s -> "Found: " + s.data().getName();
-    case Error<User> e   -> "Error " + e.code() + ": " + e.message();
+// With yield for multi-statement blocks
+int result = switch (status) {
+    case ACTIVE -> 1;
+    case PENDING -> {
+        logPending();
+        yield 0;
+    }
+    default -> -1;
 };
 ```
 
 ---
 
-## Pattern Matching (Java 16–21)
-
-### instanceof Pattern Matching (Java 16)
+## Local Classes, Lambdas, and var in Generics (Java 9-11)
 
 ```java
-// Before
-if (obj instanceof String) {
-    String s = (String) obj;
-    System.out.println(s.toUpperCase());
+// Private interface methods (Java 9)
+public interface Calculator {
+    default int addAndDouble(int a, int b) {
+        return doubleIt(add(a, b));   // calling private method
+    }
+    private int doubleIt(int n) { return n * 2; }  // private interface method
+    int add(int a, int b);
 }
 
-// With pattern matching
-if (obj instanceof String s) {
-    System.out.println(s.toUpperCase()); // s is already typed String
-}
+// Collection factory methods (Java 9)
+List<String> list = List.of("a", "b", "c");      // immutable
+Set<Integer> set = Set.of(1, 2, 3);
+Map<String, Integer> map = Map.of("a", 1, "b", 2);
+Map<String, Integer> map2 = Map.ofEntries(
+    Map.entry("a", 1),
+    Map.entry("b", 2)
+);
 
-// With guard
-if (obj instanceof String s && s.length() > 5) {
-    System.out.println("Long string: " + s);
-}
+// String methods (Java 11)
+" hello ".strip()           // "hello" — Unicode-aware trim
+" hello ".stripLeading()    // "hello "
+" hello ".stripTrailing()   // " hello"
+"".isBlank()                 // true
+"  ".isBlank()                // true
+"hi".repeat(3)                // "hihihi"
+"a\nb\nc".lines().toList()  // ["a","b","c"]
+
+// Optional.isEmpty (Java 11)
+Optional<String> opt = Optional.empty();
+opt.isEmpty()    // true (cleaner than !opt.isPresent())
+
+// Files.readString / writeString (Java 11)
+String content = Files.readString(Path.of("file.txt"));
+Files.writeString(Path.of("out.txt"), "content");
+
+// var in lambda parameters (Java 11) — allows annotations on inferred types
+list.stream().map((@NonNull var s) -> s.toUpperCase());
 ```
 
-### Switch Pattern Matching (Java 21)
+---
+
+## Sequenced Collections (Java 21)
 
 ```java
-// Pattern matching in switch — handles any type
-Object obj = getValue();
+// New interfaces: SequencedCollection, SequencedSet, SequencedMap
+// Provide uniform first/last access across List, LinkedHashSet, etc.
 
-String description = switch (obj) {
-    case Integer i    -> "Integer: " + i;
-    case Long l       -> "Long: " + l;
-    case String s     -> "String: " + s;
-    case int[] arr    -> "int array of length " + arr.length;
-    case null         -> "null value";
-    default           -> "Unknown: " + obj.getClass().getSimpleName();
-};
-```
+List<String> list = new ArrayList<>(List.of("a", "b", "c"));
+list.getFirst()         // "a"
+list.getLast()          // "c"
+list.addFirst("z")      // [z, a, b, c]
+list.addLast("d")       // [z, a, b, c, d]
+list.removeFirst()      // removes "z"
+list.removeLast()       // removes "d"
+list.reversed()          // view: [c, b, a] (or current order reversed)
 
-```java
-// Guard patterns
-String classify = switch (number) {
-    case Integer i when i < 0   -> "Negative";
-    case Integer i when i == 0  -> "Zero";
-    case Integer i when i > 0   -> "Positive";
-    default                      -> "Not an integer";
-};
+LinkedHashSet<String> set = new LinkedHashSet<>(List.of("a", "b", "c"));
+set.getFirst()           // "a"
+set.getLast()            // "c"
+set.reversed()            // reversed view
+
+LinkedHashMap<String, Integer> map = new LinkedHashMap<>();
+map.put("a", 1);
+map.put("b", 2);
+map.firstEntry()         // a=1
+map.lastEntry()          // b=2
+map.sequencedKeySet()
+map.sequencedValues()
+map.sequencedEntrySet()
+map.reversed()
 ```
 
 ---
 
 ## Virtual Threads (Java 21)
 
-Virtual threads are JVM-managed, lightweight threads. You can create millions of them; each one takes only a few hundred bytes.
+Covered in depth in the Concurrency page — summary here:
 
 ```java
-// Create a virtual thread
-Thread.ofVirtual().start(() -> {
-    System.out.println("Virtual thread: " + Thread.currentThread().isVirtual());
-});
+// Lightweight threads managed by the JVM — millions possible
+Thread.ofVirtual().start(() -> doWork());
 
-// Executor backed by virtual threads
-try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-    List<Future<String>> futures = IntStream.range(0, 10_000)
-        .mapToObj(i -> executor.submit(() -> fetchData(i)))
-        .toList();
-
-    futures.forEach(f -> {
-        try { System.out.println(f.get()); }
-        catch (Exception e) { e.printStackTrace(); }
-    });
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    IntStream.range(0, 100_000).forEach(i ->
+        executor.submit(() -> {
+            Thread.sleep(Duration.ofMillis(100));  // cheap for virtual threads
+            return fetchData(i);
+        })
+    );
 }
-// try-with-resources calls shutdown() and awaitTermination() automatically
-```
-
-### In Spring Boot (3.2+)
-
-```yaml
-spring:
-  threads:
-    virtual:
-      enabled: true    # Tomcat uses virtual threads for request handling
-```
-
-This single config line turns your Spring Boot app into a highly concurrent server — each HTTP request runs on a virtual thread instead of a platform thread. You get the scalability of reactive without rewriting your blocking code.
-
-**Tips:**
-- Don't pool virtual threads — they're designed to be created per task.
-- Virtual threads shine for I/O-bound code (DB queries, HTTP calls, file reads).
-- Use `ReentrantLock` instead of `synchronized` in virtual-thread-heavy code to avoid pinning.
-
----
-
-## SequencedCollection (Java 21)
-
-A new interface added to the collections hierarchy that provides consistent first/last access.
-
-```java
-// Works on List, Deque, LinkedHashSet, etc.
-SequencedCollection<String> list = new ArrayList<>(List.of("a", "b", "c"));
-
-list.getFirst();         // "a"
-list.getLast();          // "c"
-list.addFirst("z");      // ["z", "a", "b", "c"]
-list.addLast("x");       // ["z", "a", "b", "c", "x"]
-list.removeFirst();      // removes and returns "z"
-list.removeLast();       // removes and returns "x"
-list.reversed();         // reversed view — ["c", "b", "a"]
+// Ideal for I/O-bound workloads (HTTP calls, DB queries) with high concurrency
 ```
 
 ---
 
-## String Methods (Java 11–15)
+## Other Notable Additions
 
 ```java
-String s = "  Hello, World!  ";
+// Helpful NullPointerExceptions (Java 14+) — enabled by default
+// Old: Exception in thread "main" java.lang.NullPointerException
+// New: Cannot invoke "String.length()" because "user.getName()" is null
 
-s.strip();            // trim() but Unicode-aware: "Hello, World!"
-s.stripLeading();     // "Hello, World!  "
-s.stripTrailing();    // "  Hello, World!"
-s.isBlank();          // false (isEmpty() checks length, isBlank() checks whitespace too)
-"   ".isBlank();      // true
+// Records with generics + pattern matching combo (Java 21)
+sealed interface Tree<T> permits Leaf, Node {}
+record Leaf<T>() implements Tree<T> {}
+record Node<T>(T value, Tree<T> left, Tree<T> right) implements Tree<T> {}
 
-"line1\nline2\nline3".lines()  // Stream<String> — ["line1", "line2", "line3"]
-    .forEach(System.out::println);
-
-"hello".repeat(3);    // "hellohellohello"
-
-// String.formatted (Java 15) — instance method version of String.format
-"Hello, %s! You are %d.".formatted("Alice", 30); // "Hello, Alice! You are 30."
-```
-
----
-
-## var — Local Variable Type Inference (Java 10)
-
-`var` lets the compiler infer the type of local variables. It's just syntax sugar — the type is still static.
-
-```java
-// Instead of:
-Map<String, List<Integer>> map = new HashMap<String, List<Integer>>();
-// Use:
-var map = new HashMap<String, List<Integer>>();
-
-// Works in for-each
-var names = List.of("Alice", "Bob", "Charlie");
-for (var name : names) {
-    System.out.println(name.toUpperCase());
+<T> int countNodes(Tree<T> tree) {
+    return switch (tree) {
+        case Leaf<T> l -> 0;
+        case Node<T>(var v, var l, var r) -> 1 + countNodes(l) + countNodes(r);
+    };
 }
 
-// Works with try-with-resources
-try (var reader = new BufferedReader(new FileReader("file.txt"))) {
-    var line = reader.readLine();
-}
+// Unnamed variables and patterns (Java 21 preview, finalized later)
+// for (var _ : list) { count++; }   // ignore loop variable
+// if (obj instanceof Point(var x, var _)) { }  // ignore part of a destructured pattern
 
-// Don't use when it hurts readability
-var x = compute();  // bad — what type is x?
-User user = compute();  // better — type is obvious
+// String Templates (preview, Java 21+, may change before finalization)
+// String name = "Alice";
+// String greeting = STR."Hello, \{name}!";   // preview feature syntax
 ```
-
-**Tips:**
-- Use `var` when the type is obvious from the right-hand side (`new ArrayList<>()`, `List.of(...)`).
-- Avoid `var` for method return values where the type isn't immediately clear.
-- `var` only works for local variables — not fields, method parameters, or return types.
-
----
-
-## Helpful NullPointerExceptions (Java 14+)
-
-Since Java 14, NPE messages tell you exactly which variable was null:
-
-```
-Cannot invoke "String.length()" because "user.address.city" is null
-```
-
-Instead of the old:
-```
-java.lang.NullPointerException
-```
-
-Enable with: `-XX:+ShowCodeDetailsInExceptionMessages` (default on from Java 17).
-
----
-
-## Future: Project Loom, Valhalla, Panama
-
-- **Project Loom** (delivered in Java 21) — virtual threads. Also bringing structured concurrency.
-- **Project Valhalla** (in progress) — value types (inline classes) for better memory efficiency with small objects.
-- **Project Panama** (Java 22+) — Foreign Function & Memory API to replace JNI for calling native code.
 
 ---
 
 ## Summary
 
-Modern Java (17–21) is a significantly more expressive language than Java 8:
-
-- **Text blocks** — readable multi-line strings without escape sequences.
-- **Records** — concise immutable data classes with zero boilerplate.
-- **Sealed classes** — controlled type hierarchies, exhaustive switch expressions.
-- **Pattern matching** — cleaner `instanceof` checks and powerful `switch` expressions.
-- **Virtual threads** — write simple blocking code, get reactive-scale concurrency.
-- **var** — type inference for cleaner local variable declarations.
-
-**Key Takeaways:**
-- Use records for DTOs, value objects, and any data-only class — they replace 30+ lines of boilerplate.
-- Sealed classes + pattern matching switches are the Java way to model sum types (like Rust's `Result<T, E>` or Haskell's `Either`).
-- Enable virtual threads in Spring Boot 3.2+ with a single config line — massive concurrency improvement for free.
-- Target Java 21 (LTS) for new projects — it has all modern features and long-term support.
+- `var` infers local variable types — use when the type is obvious, avoid when it obscures meaning.
+- Text blocks (`"""`) make embedded JSON/SQL/HTML readable without escape character soup.
+- Records eliminate boilerplate for immutable data classes — auto-generated equals/hashCode/toString/accessors.
+- Sealed classes/interfaces + exhaustive `switch` give you compiler-checked algebraic data types.
+- Record patterns in `switch` let you destructure nested data in a single expression.
+- Sequenced collections (`getFirst()`, `getLast()`, `reversed()`) unify first/last-element access across `List`, `Set`, and `Map`.
+- Virtual threads (Java 21+) make the thread-per-request model viable again for high-concurrency I/O-bound services.

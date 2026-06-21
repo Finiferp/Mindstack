@@ -1,35 +1,16 @@
 ---
-title: "Testing Spring Applications"
-sidebar_label: "Testing"
+title: "Spring Testing"
+sidebar_label: "Spring Testing"
 sidebar_position: 14
 ---
 
-# Testing Spring Applications
+# Spring Testing
 
-A well-tested Spring application has multiple layers of tests — fast unit tests that test logic in isolation, integration tests that verify layers work together, and end-to-end tests that exercise the full HTTP stack. Spring Boot provides excellent test support with minimal setup.
-
----
-
-## Testing Pyramid
-
-```
-        ┌─────────────┐
-        │   E2E / API │  few, slow, full stack
-        ├─────────────┤
-        │ Integration │  moderate, Spring context
-        ├─────────────┤
-        │    Unit     │  many, fast, no context
-        └─────────────┘
-```
-
-- **Unit tests** — test one class in isolation. No Spring context, no database. Fast.
-- **Integration tests** — test multiple layers together (e.g., service + repository + database).
-- **Web layer tests** — test controller HTTP behavior without starting a full server.
-- **End-to-end** — start the whole application and send real HTTP requests.
+Spring Boot Test combines JUnit 5, Mockito, AssertJ, and Spring's test context framework. This covers unit tests, slice tests, full integration tests, and Testcontainers.
 
 ---
 
-## Dependencies
+## Setup
 
 ```xml
 <dependency>
@@ -37,23 +18,28 @@ A well-tested Spring application has multiple layers of tests — fast unit test
     <artifactId>spring-boot-starter-test</artifactId>
     <scope>test</scope>
 </dependency>
-<!-- spring-boot-starter-test includes:
-     JUnit 5, Mockito, AssertJ, Hamcrest,
-     Spring Test, Spring Boot Test, JsonPath -->
+<!-- Includes: JUnit 5, Mockito, AssertJ, Hamcrest, JSONassert, Spring Test -->
+
+<dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>test</scope>
+</dependency>
 ```
 
 ---
 
-## Unit Tests with JUnit 5 and Mockito
-
-Unit tests isolate the class under test. Dependencies are replaced with **mocks** — fake objects that return canned responses.
+## Plain Unit Tests (JUnit 5 + Mockito)
 
 ```java
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -66,47 +52,39 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private EmailService emailService;
-
     @InjectMocks
-    private UserService userService;  // mocks injected into this
+    private UserService userService;     // Mockito injects the @Mock fields via constructor
 
     @Test
-    void shouldCreateUserSuccessfully() {
+    @DisplayName("Should create user with hashed password")
+    void shouldCreateUser() {
         // Arrange
         CreateUserRequest request = new CreateUserRequest("Alice", "alice@example.com", "password123");
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("$2a$10$hashed");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
-            User u = inv.getArgument(0);
+        when(passwordEncoder.encode("password123")).thenReturn("hashed_password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
             u.setId(1L);
             return u;
         });
 
         // Act
-        UserResponse result = userService.create(request);
+        UserDto result = userService.create(request);
 
         // Assert
-        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(1L);
         assertThat(result.name()).isEqualTo("Alice");
-        assertThat(result.email()).isEqualTo("alice@example.com");
-
-        // Verify interactions
-        verify(userRepository).existsByEmail("alice@example.com");
-        verify(passwordEncoder).encode("password123");
-        verify(userRepository).save(any(User.class));
-        verify(emailService).sendWelcomeEmail("alice@example.com");
+        verify(userRepository).save(argThat(u -> u.getPasswordHash().equals("hashed_password")));
     }
 
     @Test
-    void shouldThrowWhenEmailAlreadyTaken() {
-        CreateUserRequest request = new CreateUserRequest("Alice", "alice@example.com", "pass");
+    void shouldThrowWhenEmailAlreadyExists() {
         when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
 
+        CreateUserRequest request = new CreateUserRequest("Alice", "alice@example.com", "pass");
+
         assertThatThrownBy(() -> userService.create(request))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("Email already registered");
+            .isInstanceOf(ConflictException.class)
+            .hasMessageContaining("already exists");
 
         verify(userRepository, never()).save(any());
     }
@@ -115,178 +93,342 @@ class UserServiceTest {
     void shouldReturnEmptyWhenUserNotFound() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        Optional<UserResponse> result = userService.findById(99L);
+        Optional<UserDto> result = userService.findById(99L);
 
         assertThat(result).isEmpty();
+    }
+
+    @Nested
+    @DisplayName("Password validation")
+    class PasswordValidation {
+        @Test
+        void shouldRejectShortPassword() {
+            CreateUserRequest request = new CreateUserRequest("Alice", "alice@example.com", "short");
+            assertThatThrownBy(() -> userService.create(request))
+                .isInstanceOf(ValidationException.class);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "a@", "@b.com", "invalid"})
+    void shouldRejectInvalidEmails(String email) {
+        CreateUserRequest request = new CreateUserRequest("Alice", email, "password123");
+        assertThatThrownBy(() -> userService.create(request)).isInstanceOf(ValidationException.class);
     }
 }
 ```
 
-### Mockito Essentials
+### Mockito Reference
 
 ```java
 // Stubbing
-when(repo.findById(1L)).thenReturn(Optional.of(user));
-when(repo.save(any(User.class))).thenReturn(user);
-when(repo.findAll()).thenThrow(new RuntimeException("DB down"));
-doNothing().when(emailService).send(anyString());
-doAnswer(inv -> { /* custom logic */ return null; }).when(service).call(any());
+when(mock.method()).thenReturn(value);
+when(mock.method(anyString())).thenReturn(value);
+when(mock.method(eq("specific"))).thenReturn(value);
+when(mock.method()).thenThrow(new RuntimeException("error"));
+when(mock.method()).thenAnswer(invocation -> computeValue(invocation.getArgument(0)));
+when(mock.method()).thenReturn(value1).thenReturn(value2);  // different on successive calls
 
-// Argument matchers
-any()                    // any object
-any(User.class)          // any User instance
-anyString()              // any String
-anyLong()                // any long
-eq("exact")              // exact value
-argThat(u -> u.getId() == 1) // custom predicate
+// void methods
+doNothing().when(mock).voidMethod();
+doThrow(new RuntimeException()).when(mock).voidMethod();
+doAnswer(invocation -> { /* side effect */ return null; }).when(mock).voidMethod();
 
 // Verification
-verify(repo).save(any(User.class));         // called once
-verify(repo, times(2)).findById(anyLong()); // called exactly twice
-verify(repo, never()).delete(any());        // never called
-verify(repo, atLeastOnce()).findAll();
-verify(repo, atMost(3)).save(any());
+verify(mock).method();                          // called exactly once
+verify(mock, times(2)).method();                 // called exactly twice
+verify(mock, never()).method();                  // never called
+verify(mock, atLeastOnce()).method();
+verify(mock, atLeast(2)).method();
+verify(mock, atMost(3)).method();
+verifyNoInteractions(mock);                       // mock never used at all
+verifyNoMoreInteractions(mock);                   // no OTHER interactions beyond verified ones
 
-// Capture arguments
+// Argument matchers
+any()                  // anything (including null)
+anyString()
+anyInt(), anyLong(), anyDouble(), anyBoolean()
+anyList(), anyMap(), anySet()
+eq(value)               // exact match
+isNull(), isNotNull()
+argThat(arg -> arg.getName().equals("Alice"))    // custom predicate
+
+// Argument capture
 ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-verify(repo).save(captor.capture());
-User saved = captor.getValue();
-assertThat(saved.getEmail()).isEqualTo("test@example.com");
+verify(userRepository).save(captor.capture());
+User captured = captor.getValue();
+assertThat(captured.getEmail()).isEqualTo("alice@example.com");
+
+// Spy — partial mock, real methods called unless stubbed
+List<String> spyList = spy(new ArrayList<>());
+doReturn(100).when(spyList).size();   // stub one method, others work normally
+spyList.add("real call");             // this actually executes
 ```
 
 ---
 
-## AssertJ — Fluent Assertions
+## Spring Boot Test Slices
+
+Slice tests load only the relevant part of the application context — much faster than full `@SpringBootTest`.
+
+### @WebMvcTest — Controller Layer
 
 ```java
-// Basic
-assertThat(result).isNotNull();
-assertThat(result).isEqualTo(expected);
-assertThat(result).isInstanceOf(UserResponse.class);
+@WebMvcTest(UserController.class)
+class UserControllerTest {
 
-// Strings
-assertThat(name).isEqualTo("Alice");
-assertThat(name).contains("Ali");
-assertThat(name).startsWith("Al");
-assertThat(name).isNotBlank();
+    @Autowired
+    private MockMvc mockMvc;
 
-// Numbers
-assertThat(count).isEqualTo(5);
-assertThat(price).isGreaterThan(0.0);
-assertThat(price).isBetween(1.0, 100.0);
+    @MockBean                          // mock replaces real bean in the Spring context
+    private UserService userService;
 
-// Collections
-assertThat(list).hasSize(3);
-assertThat(list).contains("Alice", "Bob");
-assertThat(list).containsExactlyInAnyOrder("Bob", "Alice", "Charlie");
-assertThat(list).doesNotContain("Dave");
-assertThat(list).isEmpty();
-assertThat(list).allMatch(u -> u.getAge() >= 18);
-assertThat(list).anyMatch(u -> u.getRole() == Role.ADMIN);
-assertThat(list).noneMatch(u -> u.getName().isBlank());
+    @Autowired
+    private ObjectMapper objectMapper;
 
-// Extracting fields from object list
-assertThat(users)
-    .extracting(User::getName)
-    .containsExactly("Alice", "Bob", "Charlie");
+    @Test
+    void shouldReturnUser() throws Exception {
+        UserDto user = new UserDto(1L, "Alice", "alice@example.com", "USER", Instant.now());
+        when(userService.findById(1L)).thenReturn(user);
 
-assertThat(users)
-    .extracting("name", "email")
-    .contains(tuple("Alice", "alice@example.com"));
+        mockMvc.perform(get("/api/users/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.name").value("Alice"))
+            .andExpect(jsonPath("$.email").value("alice@example.com"));
+    }
 
-// Exceptions
-assertThatThrownBy(() -> service.doSomething())
-    .isInstanceOf(BusinessException.class)
-    .hasMessage("Something went wrong")
-    .hasFieldOrPropertyWithValue("code", "ERR_001");
+    @Test
+    void shouldReturn404WhenNotFound() throws Exception {
+        when(userService.findById(99L)).thenThrow(new EntityNotFoundException("User", 99L));
 
-assertThatNoException().isThrownBy(() -> service.safeOperation());
+        mockMvc.perform(get("/api/users/99"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").exists());
+    }
 
-// Optional
-assertThat(optional).isPresent();
-assertThat(optional).hasValue(expected);
-assertThat(optional).isEmpty();
+    @Test
+    void shouldCreateUser() throws Exception {
+        CreateUserRequest request = new CreateUserRequest("Alice", "alice@example.com", "password123");
+        UserDto created = new UserDto(1L, "Alice", "alice@example.com", "USER", Instant.now());
+        when(userService.create(any())).thenReturn(created);
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void shouldReturn400ForInvalidInput() throws Exception {
+        CreateUserRequest invalid = new CreateUserRequest("", "not-an-email", "x");
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalid)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors").exists());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")    // simulate an authenticated admin user
+    void shouldAllowAdminToDelete() throws Exception {
+        mockMvc.perform(delete("/api/users/1"))
+            .andExpect(status().isNoContent());
+        verify(userService).delete(1L);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldForbidNonAdminFromDeleting() throws Exception {
+        mockMvc.perform(delete("/api/users/1"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldRequireAuthentication() throws Exception {
+        mockMvc.perform(get("/api/users/me"))
+            .andExpect(status().isUnauthorized());
+    }
+}
+```
+
+### @DataJpaTest — Repository Layer
+
+```java
+@DataJpaTest   // configures in-memory DB, only loads JPA components
+class UserRepositoryTest {
+
+    @Autowired
+    private TestEntityManager entityManager;   // helper for setting up test data
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldFindByEmail() {
+        User user = new User("Alice", "alice@example.com", "hash");
+        entityManager.persistAndFlush(user);
+
+        Optional<User> found = userRepository.findByEmail("alice@example.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getName()).isEqualTo("Alice");
+    }
+
+    @Test
+    void shouldReturnEmptyForUnknownEmail() {
+        Optional<User> found = userRepository.findByEmail("nobody@example.com");
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void shouldEnforceUniqueEmailConstraint() {
+        entityManager.persistAndFlush(new User("Alice", "alice@example.com", "hash"));
+
+        assertThatThrownBy(() ->
+            entityManager.persistAndFlush(new User("Bob", "alice@example.com", "hash2"))
+        ).isInstanceOf(PersistenceException.class);
+    }
+
+    @Test
+    void shouldFindActiveUsersOrderedByName() {
+        entityManager.persist(new User("Carol", "carol@example.com", "h", true));
+        entityManager.persist(new User("Alice", "alice@example.com", "h", true));
+        entityManager.persist(new User("Bob",   "bob@example.com",   "h", false));  // inactive
+        entityManager.flush();
+
+        List<User> active = userRepository.findByActiveTrueOrderByNameAsc();
+
+        assertThat(active).extracting(User::getName).containsExactly("Alice", "Carol");
+    }
+}
+```
+
+### @JsonTest — Serialization
+
+```java
+@JsonTest
+class UserDtoJsonTest {
+
+    @Autowired
+    private JacksonTester<UserDto> json;
+
+    @Test
+    void shouldSerialize() throws Exception {
+        UserDto dto = new UserDto(1L, "Alice", "alice@example.com", "USER", Instant.parse("2024-01-01T00:00:00Z"));
+
+        JsonContent<UserDto> result = json.write(dto);
+
+        assertThat(result).hasJsonPathNumberValue("$.id");
+        assertThat(result).extractingJsonPathStringValue("$.name").isEqualTo("Alice");
+    }
+
+    @Test
+    void shouldDeserialize() throws Exception {
+        String content = """
+            {"id":1,"name":"Alice","email":"alice@example.com","role":"USER"}
+            """;
+        UserDto dto = json.parseObject(content);
+        assertThat(dto.name()).isEqualTo("Alice");
+    }
+}
 ```
 
 ---
 
 ## @SpringBootTest — Full Integration Tests
 
-Loads the entire Spring context and all beans. Slow but comprehensive.
-
 ```java
-@SpringBootTest
-@Transactional                      // roll back DB changes after each test
-@ActiveProfiles("test")            // use application-test.yml
-class UserServiceIntegrationTest {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
+@Transactional   // rolls back DB changes after each test
+class UserIntegrationTest {
 
     @Autowired
-    private UserService userService;
+    private MockMvc mockMvc;
 
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Test
-    void shouldPersistUserToDatabase() {
-        CreateUserRequest request = new CreateUserRequest("Bob", "bob@example.com", "pass123!");
+    void fullUserLifecycle() throws Exception {
+        // Create
+        String createBody = """
+            {"name":"Alice","email":"alice@example.com","password":"password123"}
+            """;
+        String response = mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
 
-        UserResponse result = userService.create(request);
+        Long id = JsonPath.read(response, "$.id");
 
-        assertThat(result.id()).isNotNull();
-        assertThat(userRepository.existsByEmail("bob@example.com")).isTrue();
+        // Verify in DB
+        User saved = userRepository.findById(id).orElseThrow();
+        assertThat(saved.getEmail()).isEqualTo("alice@example.com");
+        assertThat(passwordEncoder.matches("password123", saved.getPasswordHash())).isTrue();
+
+        // Read
+        mockMvc.perform(get("/api/users/" + id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Alice"));
+
+        // Update
+        mockMvc.perform(put("/api/users/" + id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Alice Smith\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Alice Smith"));
+
+        // Delete
+        mockMvc.perform(delete("/api/users/" + id))
+            .andExpect(status().isNoContent());
+
+        assertThat(userRepository.findById(id)).isEmpty();
     }
+}
+
+// Using TestRestTemplate for full HTTP-level testing
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class UserApiTest {
+
+    @Autowired
+    private TestRestTemplate restTemplate;
 
     @Test
-    void shouldFindUserByEmail() {
-        // Given — seed data
-        userRepository.save(new User("Test", "test@example.com", "hash"));
+    void shouldCreateAndRetrieveUser() {
+        CreateUserRequest request = new CreateUserRequest("Alice", "alice@example.com", "password123");
 
-        // When
-        Optional<UserResponse> found = userService.findByEmail("test@example.com");
+        ResponseEntity<UserDto> createResponse = restTemplate.postForEntity("/api/users", request, UserDto.class);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-        // Then
-        assertThat(found).isPresent();
-        assertThat(found.get().email()).isEqualTo("test@example.com");
+        Long id = createResponse.getBody().id();
+
+        ResponseEntity<UserDto> getResponse = restTemplate.getForEntity("/api/users/" + id, UserDto.class);
+        assertThat(getResponse.getBody().name()).isEqualTo("Alice");
     }
 }
 ```
 
-### Test Database with H2
+---
 
-```yaml
-# src/test/resources/application-test.yml
-spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-```
+## Testcontainers
 
-### Test Database with Testcontainers (real PostgreSQL in Docker)
-
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-testcontainers</artifactId>
-    <scope>test</scope>
-</dependency>
-<dependency>
-    <groupId>org.testcontainers</groupId>
-    <artifactId>postgresql</artifactId>
-    <scope>test</scope>
-</dependency>
-```
+Run real databases in Docker containers for integration tests — much more reliable than H2 mocking production behavior.
 
 ```java
 @SpringBootTest
 @Testcontainers
-class UserRepositoryTest {
+class UserRepositoryContainerTest {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16")
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
         .withDatabaseName("testdb")
         .withUsername("test")
         .withPassword("test");
@@ -302,262 +444,108 @@ class UserRepositoryTest {
     private UserRepository userRepository;
 
     @Test
-    void shouldSaveAndFindUser() {
-        User user = new User("Alice", "alice@example.com", "hash");
-        userRepository.save(user);
-
-        Optional<User> found = userRepository.findByEmail("alice@example.com");
-        assertThat(found).isPresent();
+    void shouldPersistToRealPostgres() {
+        User user = userRepository.save(new User("Alice", "alice@example.com", "hash"));
+        assertThat(user.getId()).isNotNull();
     }
 }
+
+// Shared container across test classes (faster test suite)
+public abstract class AbstractIntegrationTest {
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    static {
+        postgres.start();    // starts once, shared by all subclasses
+    }
+
+    @DynamicPropertySource
+    static void properties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+}
+
+class UserServiceIntegrationTest extends AbstractIntegrationTest {
+    // inherits the shared container setup
+}
+
+// Other common containers
+@Container
+static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+
+@Container
+static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"));
+
+@Container
+static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management");
 ```
 
 ---
 
-## @WebMvcTest — Controller Layer Tests
-
-Tests only the web layer (controllers, filters, exception handlers). Much faster than `@SpringBootTest`.
+## Testing Async and Scheduled Code
 
 ```java
-@WebMvcTest(UserController.class)
-class UserControllerTest {
+@SpringBootTest
+class AsyncServiceTest {
 
     @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean                       // mock the service — not loaded by @WebMvcTest
-    private UserService userService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private NotificationService notificationService;
 
     @Test
-    void shouldReturnUserWhenFound() throws Exception {
-        UserResponse user = new UserResponse(1L, "Alice", "alice@example.com", LocalDateTime.now());
-        when(userService.findById(1L)).thenReturn(Optional.of(user));
+    void shouldSendNotificationAsync() {
+        notificationService.sendAsync("test message");
 
-        mockMvc.perform(get("/api/users/1")
-                .header("Authorization", "Bearer valid-token"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.name").value("Alice"))
-            .andExpect(jsonPath("$.email").value("alice@example.com"));
-    }
-
-    @Test
-    void shouldReturn404WhenUserNotFound() throws Exception {
-        when(userService.findById(99L)).thenReturn(Optional.empty());
-
-        mockMvc.perform(get("/api/users/99"))
-            .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void shouldCreateUserAndReturn201() throws Exception {
-        CreateUserRequest request = new CreateUserRequest("Bob", "bob@example.com", "pass123!");
-        UserResponse created = new UserResponse(2L, "Bob", "bob@example.com", LocalDateTime.now());
-        when(userService.create(any())).thenReturn(created);
-
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").value(2))
-            .andExpect(header().exists("Location"));
-    }
-
-    @Test
-    void shouldReturn400WhenEmailIsInvalid() throws Exception {
-        CreateUserRequest badRequest = new CreateUserRequest("Bob", "not-an-email", "pass123!");
-
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(badRequest)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-    }
-
-    @Test
-    void shouldReturnPagedResults() throws Exception {
-        Page<UserResponse> page = new PageImpl<>(List.of(
-            new UserResponse(1L, "Alice", "alice@example.com", LocalDateTime.now())
-        ));
-        when(userService.findAll(any(Pageable.class))).thenReturn(page);
-
-        mockMvc.perform(get("/api/users").param("page", "0").param("size", "10"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.content").isArray())
-            .andExpect(jsonPath("$.content.length()").value(1))
-            .andExpect(jsonPath("$.totalElements").value(1));
+        // Await async completion
+        await().atMost(5, TimeUnit.SECONDS)
+            .untilAsserted(() -> verify(emailSender).send(any()));
     }
 }
+// Requires: implementation 'org.awaitility:awaitility'
 ```
 
 ---
 
-## @DataJpaTest — Repository Tests
-
-Tests only the JPA layer — loads only repositories, entities, and the datasource. No service or web layer.
+## Test Configuration
 
 ```java
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // use real DB via Testcontainers
-class UserRepositoryTest {
-
-    @Autowired
-    private TestEntityManager entityManager;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Test
-    void shouldFindByEmail() {
-        // Use TestEntityManager to persist test data bypassing the repository
-        User user = new User("Alice", "alice@example.com", "hash");
-        entityManager.persistAndFlush(user);
-
-        Optional<User> found = userRepository.findByEmail("alice@example.com");
-
-        assertThat(found).isPresent();
-        assertThat(found.get().getName()).isEqualTo("Alice");
-    }
-
-    @Test
-    void shouldReturnEmptyWhenEmailNotFound() {
-        Optional<User> found = userRepository.findByEmail("unknown@example.com");
-        assertThat(found).isEmpty();
-    }
-
-    @Test
-    void shouldFindActiveUsersOnly() {
-        entityManager.persist(new User("Active", "active@example.com", "hash", true));
-        entityManager.persist(new User("Inactive", "inactive@example.com", "hash", false));
-        entityManager.flush();
-
-        List<User> actives = userRepository.findByActiveTrue();
-        assertThat(actives).hasSize(1);
-        assertThat(actives.get(0).getEmail()).isEqualTo("active@example.com");
-    }
-}
-```
-
----
-
-## Testing with Security
-
-```java
-@WebMvcTest(UserController.class)
-@Import(SecurityConfig.class)
-class UserControllerSecurityTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
-    private UserService userService;
-
-    @MockBean
-    private JwtUtil jwtUtil;
-
-    @Test
-    void shouldReturn401WhenNoToken() throws Exception {
-        mockMvc.perform(get("/api/users"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")           // fake authenticated user
-    void shouldAllowAdminAccess() throws Exception {
-        when(userService.findAll(any())).thenReturn(Page.empty());
-
-        mockMvc.perform(get("/api/users"))
-            .andExpect(status().isOk());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldDenyUserFromAdminEndpoint() throws Exception {
-        mockMvc.perform(get("/api/admin/stats"))
-            .andExpect(status().isForbidden());
-    }
-
-    // Custom @WithMockUser for your principal type
-    @WithSecurityContext(factory = WithMockCustomUserFactory.class)
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface WithMockCustomUser {
-        long id() default 1L;
-        String email() default "test@example.com";
-        String role() default "USER";
-    }
-}
-```
-
----
-
-## Parameterized Tests
-
-```java
-@ParameterizedTest
-@ValueSource(strings = {"", " ", "  "})
-void shouldFailWhenNameIsBlank(String name) {
-    assertThatThrownBy(() -> userService.create(new CreateUserRequest(name, "a@b.com", "pass")))
-        .isInstanceOf(ValidationException.class);
-}
-
-@ParameterizedTest
-@CsvSource({
-    "alice@example.com, true",
-    "not-an-email, false",
-    "@nodomain, false",
-    "user@domain.co.uk, true"
+// Test-specific properties
+@SpringBootTest
+@TestPropertySource(properties = {
+    "app.feature.enabled=true",
+    "spring.datasource.url=jdbc:h2:mem:testdb"
 })
-void shouldValidateEmails(String email, boolean valid) {
-    assertThat(EmailValidator.isValid(email)).isEqualTo(valid);
+class FeatureTest { }
+
+// application-test.properties activated automatically with @ActiveProfiles
+@SpringBootTest
+@ActiveProfiles("test")
+class ProfileBasedTest { }
+
+// Test-only bean configuration
+@TestConfiguration
+public class TestConfig {
+    @Bean
+    @Primary
+    public Clock fixedClock() {
+        return Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneOffset.UTC);
+    }
 }
 
-@ParameterizedTest
-@MethodSource("rolePermissionProvider")
-void shouldEnforceRolePermissions(Role role, String endpoint, int expectedStatus) throws Exception {
-    // Test role-based access
-}
-
-static Stream<Arguments> rolePermissionProvider() {
-    return Stream.of(
-        Arguments.of(Role.ADMIN, "/api/admin/users", 200),
-        Arguments.of(Role.USER, "/api/admin/users", 403),
-        Arguments.of(Role.USER, "/api/profile", 200)
-    );
-}
+@SpringBootTest
+@Import(TestConfig.class)
+class TimeBasedServiceTest { }
 ```
-
----
-
-## Test Slices Summary
-
-| Annotation         | Loads                              | Use For                        |
-|--------------------|------------------------------------|--------------------------------|
-| `@SpringBootTest`  | Full context                       | Integration, end-to-end        |
-| `@WebMvcTest`      | Controllers, filters, MVC config   | Controller / HTTP layer        |
-| `@DataJpaTest`     | Repositories, JPA, datasource      | Repository queries             |
-| `@DataRedisTest`   | Redis repositories                 | Redis repositories             |
-| `@RestClientTest`  | RestClient/RestTemplate + mocking  | HTTP client code               |
-| No annotation      | Nothing (JUnit 5 only)             | Pure unit tests                |
 
 ---
 
 ## Summary
 
-Spring Boot's test ecosystem supports every layer of the pyramid:
-
-- **Unit tests** — JUnit 5 + Mockito, no Spring context, fast feedback.
-- **@WebMvcTest** — test controllers and HTTP behavior with MockMvc.
-- **@DataJpaTest** — test repository queries against an in-memory or real DB.
-- **@SpringBootTest** — full integration tests with the entire application context.
-- **Testcontainers** — real databases in Docker for reliable integration tests.
-
-**Key Takeaways:**
-- Write more unit tests than integration tests — they're faster and cheaper.
-- Use `@MockBean` in `@WebMvcTest` to replace service beans with mocks.
-- Use `@WithMockUser` to test security constraints without a real JWT.
-- Use Testcontainers for integration tests that require a real database — H2 behaves differently from PostgreSQL.
-- Follow the Arrange/Act/Assert pattern for clear, readable tests.
+- `@ExtendWith(MockitoExtension.class)` + `@Mock`/`@InjectMocks` for fast, isolated unit tests — no Spring context needed.
+- `@WebMvcTest` loads only the web layer — use `@MockBean` to stub services, test with `MockMvc`.
+- `@DataJpaTest` loads only JPA components with an in-memory DB — fast repository tests.
+- `@SpringBootTest` loads the full application context — use sparingly, reserve for true integration tests.
+- `@Transactional` on test classes rolls back DB changes after each test — keeps tests isolated.
+- Testcontainers spins up real Docker containers (Postgres, Redis, Kafka) — far more reliable than in-memory substitutes for catching real bugs.
+- `MockMvc` lets you test the full request/response cycle including JSON serialization, validation, and status codes — without starting a real server.
+- Use `@WithMockUser` to simulate authenticated users in `@WebMvcTest` without a real login flow.
