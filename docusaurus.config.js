@@ -78,7 +78,7 @@ const config = {
           },
           {
             type: 'doc',
-            docId: 'networks/Introduction',
+            docId: 'networks/overview',
             position: 'left',
             label: 'Network',
           },
