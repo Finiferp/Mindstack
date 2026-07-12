@@ -28,7 +28,7 @@ Process: open, consensus-driven, working-group based — "rough consensus
 Output:  RFCs (Request for Comments) — see below
 ```
 
-The IETF has no formal membership — anyone can participate in working groups, propose drafts, and contribute to discussions, embodying the open, meritocratic culture established by ARPANET's original RFC tradition (see [History of Networking](./01-history-of-networking)).
+The IETF has no formal membership — anyone can participate in working groups, propose drafts, and contribute to discussions, embodying the open, meritocratic culture established by ARPANET's original RFC tradition (see [History of Networking](./01-history-of-networking.md)).
 
 ### IETF Organizational Structure
 
@@ -122,7 +122,7 @@ Process: formal, government-backed national standards bodies represent
          bureaucratic than IETF's open working-group model
 ```
 
-ISO's OSI model "lost" the protocol wars to TCP/IP in terms of actual implementation, but remains, ironically, ISO's most pedagogically influential networking contribution decades later (full history in [History of Networking](./01-history-of-networking)).
+ISO's OSI model "lost" the protocol wars to TCP/IP in terms of actual implementation, but remains, ironically, ISO's most pedagogically influential networking contribution decades later (full history in [History of Networking](./01-history-of-networking.md)).
 
 ---
 
@@ -143,7 +143,7 @@ Key contributions to networking:
   - Global radio spectrum allocation (relevant to all wireless networking)
 ```
 
-The ITU's telegraph-era origins (1865) make it the oldest organization discussed in this entire reference — a direct institutional link back to the very beginning of electrical communication described in [History of Networking](./01-history-of-networking).
+The ITU's telegraph-era origins (1865) make it the oldest organization discussed in this entire reference — a direct institutional link back to the very beginning of electrical communication described in [History of Networking](./01-history-of-networking.md).
 
 ---
 

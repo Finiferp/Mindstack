@@ -16,17 +16,17 @@ MPLS sits between Layer 2 and Layer 3 — the "shim header."
 
 ```
 Ethernet Frame:
-  ┌──────────┬──────────┬─────────┬──────────────────────┬────────────────┐
-  │ Eth Hdr  │ MPLS Lbl │ MPLS L2 │ ... More Labels ...  │  IP Packet     │
-  │ (14B)    │ (4 bytes)│ (4 bytes│   (if label stack)   │  + payload     │
-  └──────────┴──────────┴─────────┴──────────────────────┴────────────────┘
+  ┌──────────┬──────────┬──────────┬──────────────────────┬────────────────┐
+  │ Eth Hdr  │ MPLS Lbl │ MPLS L2  │ ... More Labels ...  │  IP Packet     │
+  │ (14B)    │ (4 bytes)│ (4 bytes)│   (if label stack)   │  + payload     │
+  └──────────┴──────────┴──────────┴──────────────────────┴────────────────┘
                     Label Stack
 
 Label format (32 bits):
-  ┌──────────────────────┬─────┬───┬───────────┐
-  │  Label Value (20b)   │ TC  │ S │  TTL (8b) │
-  │                      │(3b) │(1b│           │
-  └──────────────────────┴─────┴───┴───────────┘
+  ┌──────────────────────┬─────┬────┬───────────┐
+  │  Label Value (20b)   │ TC  │ S  │  TTL (8b) │
+  │                      │(3b) │(1b)│           │
+  └──────────────────────┴─────┴────┴───────────┘
 
 Label Value: 0–1048575 (20 bits)
   Special reserved labels:

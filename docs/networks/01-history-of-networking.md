@@ -116,7 +116,7 @@ While ARPANET solved wide-area connectivity, a separate set of innovations solve
 
 ## The Software-Defined and Cloud Era (2010s–Present)
 
-- **Software-Defined Networking (SDN)** emerged from academic research (notably OpenFlow, Stanford, ~2008) on the premise that the control plane (deciding where traffic goes) should be separated from the data plane (forwarding packets) and centralized in software — a major architectural shift from traditional distributed routing (see [SDN Fundamentals](./65-sdn-and-controllers)).
+- **Software-Defined Networking (SDN)** emerged from academic research (notably OpenFlow, Stanford, ~2008) on the premise that the control plane (deciding where traffic goes) should be separated from the data plane (forwarding packets) and centralized in software — a major architectural shift from traditional distributed routing (see [SDN Fundamentals](./65-sdn-and-controllers.md)).
 - **Cloud computing** (AWS launched 2006) introduced **virtual networking** — software-defined VPCs, virtual routers, and overlay networks that decoupled network topology from physical hardware (see [Cloud Networking Fundamentals](./67-cloud-networking.md)).
 - **Network automation** matured from manual CLI configuration toward programmatic, API-driven, version-controlled infrastructure (Infrastructure as Code applied to networking) — see [Network Automation](./63-network-automation-fundamentals.md).
 - **Zero Trust** architecture (popularized by Google's BeyondCorp, ~2014, and formalized in NIST SP 800-207, 2020) challenged the decades-old assumption that the internal network perimeter could be trusted (see [Zero Trust](./53-network-security-fundamentals.md)).
