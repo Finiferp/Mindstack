@@ -84,7 +84,7 @@ const config = {
           },
           {
             type: 'doc',
-            docId: 'git&versioncontrol/Introduction',
+            docId: 'git-versioncontrol/Introduction',
             position: 'left',
             label: 'Git & Version Control',
           },
