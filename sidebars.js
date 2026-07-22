@@ -301,6 +301,47 @@ networkSidebar: [
 			]
 		}
 	],
+	rustSidebar: [
+		{
+			type: 'category',
+			label: 'Rust',
+			items: [
+				'Rust/overview',
+				{
+					type: 'category',
+					label: 'Core Language',
+					items: [
+						'Rust/rust-fundamentals',
+						'Rust/rust-basics',
+						'Rust/rust-data-structures',
+						'Rust/rust-ownership',
+						'Rust/rust-structs-enums',
+						'Rust/rust-traits-generics',
+						'Rust/rust-error-handling',
+						'Rust/rust-collections',
+						'Rust/rust-lifetimes',
+						'Rust/rust-closures-iterators',
+						'Rust/rust-smart-pointers',
+						'Rust/rust-modules',
+						'Rust/rust-concurrency',
+						'Rust/rust-async',
+						'Rust/rust-testing',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Use Cases',
+					items: [
+						'Rust/rust-cli',
+						'Rust/rust-web-api',
+						'Rust/rust-systems',
+						'Rust/rust-wasm',
+					],
+				},
+				'Rust/rust-tooling',
+			],
+		},
+	],
 };
 
 

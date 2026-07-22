@@ -67,45 +67,60 @@ const config = {
       navbar: {
         title: 'Mindstack',
         logo: {
-          alt: 'My Site Logo',
+          alt: 'Mindstack Logo',
           src: 'img/logo.svg',
         },
         items: [
+          {
+            type: 'dropdown',
+            label: 'Programming',
+            position: 'left',
+            items: [
+              {
+                type: 'doc',
+                docId: 'Java/overview',
+                label: 'Java',
+              },
+              {
+                type: 'doc',
+                docId: 'JavaScript/overview',
+                label: 'JavaScript',
+              },
+              {
+                type: 'doc',
+                docId: 'Rust/overview',
+                label: 'Rust',
+              },
+            ],
+          },
+          {
+            type: 'dropdown',
+            label: 'Systems',
+            position: 'left',
+            items: [
+              {
+                type: 'doc',
+                docId: 'linux/LinuxBasics',
+                label: 'Linux',
+              },
+              {
+                type: 'doc',
+                docId: 'networks/overview',
+                label: 'Networks',
+              },
+            ],
+          },
+          {
+            type: 'doc',
+            docId: 'git-versioncontrol/Introduction',
+            label: 'Git',
+            position: 'left',
+          },
           {
             href: 'https://github.com/Finiferp/Mindstack',
             label: 'GitHub',
             position: 'right',
           },
-          {
-            type: 'doc',
-            docId: 'networks/overview',
-            position: 'left',
-            label: 'Network',
-          },
-          {
-            type: 'doc',
-            docId: 'git-versioncontrol/Introduction',
-            position: 'left',
-            label: 'Git & Version Control',
-          },
-          {
-            type: 'doc',
-            docId: 'linux/LinuxBasics',
-            position: 'left',
-            label: 'Linux' 
-          },
-          {
-            type: 'doc',
-            docId: 'Java/overview',
-            position: 'left',
-            label: 'Java' 
-          },
-          {
-            type: 'doc',
-            docId: 'JavaScript/overview',
-            position: 'left',
-            label: 'JavaScript'
-          }
         ],
       },
       footer: {
