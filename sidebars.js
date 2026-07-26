@@ -31,7 +31,7 @@
 //
 
 const sidebars = {
-networkSidebar: [
+	networkSidebar: [
 		{
 			type: 'category',
 			label: 'Networking',
@@ -339,6 +339,68 @@ networkSidebar: [
 					],
 				},
 				'Rust/rust-tooling',
+			],
+		},
+	],
+	pythonSidebar: [
+		{
+			type: 'category',
+			label: 'Python',
+			items: [
+				'Python/overview',
+				{
+					type: 'category',
+					label: 'Core Language',
+					items: [
+						'Python/py-basics',
+						'Python/py-strings',
+						'Python/py-operators',
+						'Python/py-collections',
+						'Python/py-control-flow',
+						'Python/py-functions',
+						'Python/py-oop',
+						'Python/py-modules',
+						'Python/py-exceptions',
+						'Python/py-file-handling',
+						'Python/py-iterators',
+						'Python/py-dates-math',
+						'Python/py-regex',
+						'Python/py-json',
+						'Python/py-advanced',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Data & Testing',
+					items: [
+						'Python/py-database',
+						'Python/py-testing',
+						'Python/py-dsa',
+						'Python/py-concurrency',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Django',
+					items: [
+						'Python/py-django-overview',
+						'Python/py-django-models',
+						'Python/py-django-views',
+						'Python/py-django-forms',
+						'Python/py-django-auth',
+						'Python/py-django-rest',
+					],
+				},
+				{
+					type: 'category',
+					label: 'FastAPI',
+					items: [
+						'Python/py-fastapi-overview',
+						'Python/py-fastapi-models',
+						'Python/py-fastapi-db',
+						'Python/py-fastapi-auth',
+					],
+				},
 			],
 		},
 	],

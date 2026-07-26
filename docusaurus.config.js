@@ -91,6 +91,11 @@ const config = {
                 docId: 'Rust/overview',
                 label: 'Rust',
               },
+              {
+                type: 'doc',
+                docId: 'Python/overview',
+                label: 'Python',
+              },
             ],
           },
           {
