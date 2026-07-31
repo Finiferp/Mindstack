@@ -116,10 +116,21 @@ const config = {
             ],
           },
           {
-            type: 'doc',
-            docId: 'git-versioncontrol/Introduction',
-            label: 'Git',
+            type: 'dropdown',
+            label: 'DevOps',
             position: 'left',
+            items: [
+              {
+                type: 'doc',
+                docId: 'DevOps/overview',
+                label: 'DevOps General',
+              },
+              {
+                type: 'doc',
+                docId: 'git-versioncontrol/Introduction',
+                label: 'Git',
+              },
+            ]
           },
           {
             href: 'https://github.com/Finiferp/Mindstack',

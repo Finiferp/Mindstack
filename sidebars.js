@@ -404,6 +404,81 @@ const sidebars = {
 			],
 		},
 	],
+	devopsSidebar: [
+		{
+			type: 'category',
+			label: 'DevOps',
+			items: [
+				'DevOps/overview',
+				{
+					type: 'category',
+					label: 'Foundations',
+					items: [
+						'DevOps/devops-culture',
+						'DevOps/bash-for-devops',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Containers & Orchestration',
+					items: [
+						'DevOps/docker-fundamentals',
+						'DevOps/docker-compose',
+						'DevOps/kubernetes-fundamentals',
+						'DevOps/kubernetes-workloads',
+						'DevOps/kubernetes-storage-scaling',
+						'DevOps/helm',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Infrastructure as Code',
+					items: [
+						'DevOps/terraform',
+						'DevOps/ansible',
+					],
+				},
+				{
+					type: 'category',
+					label: 'CI/CD',
+					items: [
+						'DevOps/cicd-concepts',
+						'DevOps/github-actions',
+						'DevOps/github-platform',
+						'DevOps/gitlab-ci',
+						'DevOps/jenkins',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Cloud',
+					items: [
+						'DevOps/aws-fundamentals',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Observability',
+					items: [
+						'DevOps/monitoring-prometheus-grafana',
+						'DevOps/logging-elk',
+						'DevOps/nginx-load-balancing',
+						'DevOps/observability-sre',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Security & GitOps',
+					items: [
+						'DevOps/secrets-management-vault',
+						'DevOps/gitops-argocd',
+					],
+				},
+				'DevOps/devops-toolchain-reference',
+				'DevOps/how-it-all-fits-together',
+			],
+		},
+	],
 };
 
 
