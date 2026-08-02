@@ -96,6 +96,11 @@ const config = {
                 docId: 'Python/overview',
                 label: 'Python',
               },
+              {
+                type: 'doc',
+                docId: 'Go/overview',
+                label: 'Go',
+              }
             ],
           },
           {

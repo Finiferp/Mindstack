@@ -479,6 +479,49 @@ const sidebars = {
 			],
 		},
 	],
+	goSidebar: [
+		{
+			type: 'category',
+			label: 'Go',
+			items: [
+				'Go/overview',
+				{
+					type: 'category',
+					label: 'Core Language',
+					items: [
+						'Go/go-basics',
+						'Go/go-variables-types',
+						'Go/go-arrays-slices-maps',
+						'Go/go-operators',
+						'Go/go-control-flow',
+						'Go/go-functions',
+						'Go/go-structs',
+						'Go/go-pointers',
+						'Go/go-interfaces',
+						'Go/go-error-handling',
+						'Go/go-concurrency',
+						'Go/go-packages-modules',
+						'Go/go-generics',
+						'Go/go-testing',
+						'Go/go-stdlib',
+						'Go/go-tooling',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Echo Framework',
+					items: [
+						'Go/echo-overview',
+						'Go/echo-routing',
+						'Go/echo-request-response',
+						'Go/echo-middleware',
+						'Go/echo-database',
+						'Go/echo-testing-deployment',
+					],
+				},
+			],
+		},
+	],
 };
 
 
