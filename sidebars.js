@@ -522,6 +522,77 @@ const sidebars = {
 			],
 		},
 	],
+
+	softwareEngineeringSidebar: [
+		{
+			type: 'category',
+			label: 'Software Engineering',
+			items: [
+				'SoftwareEngineering/overview',
+				{
+					type: 'category',
+					label: 'Code Quality Fundamentals',
+					items: [
+						'SoftwareEngineering/clean-code',
+						'SoftwareEngineering/solid-principles',
+						'SoftwareEngineering/code-smells-refactoring',
+						'SoftwareEngineering/dry-kiss-yagni',
+						'SoftwareEngineering/readable-maintainable-code',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Design Principles & Patterns',
+					items: [
+						'SoftwareEngineering/design-patterns',
+						'SoftwareEngineering/domain-driven-design',
+						'SoftwareEngineering/api-design',
+					],
+				},
+				{
+					type: 'category',
+					label: 'System Architecture',
+					items: [
+						'SoftwareEngineering/monolith-vs-microservices',
+						'SoftwareEngineering/microservices-deep-dive',
+						'SoftwareEngineering/modular-monolith',
+						'SoftwareEngineering/event-driven-architecture',
+						'SoftwareEngineering/architectural-patterns',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Data & Scalability',
+					items: [
+						'SoftwareEngineering/database-design',
+						'SoftwareEngineering/caching-strategies',
+						'SoftwareEngineering/scalability-patterns',
+						'SoftwareEngineering/consistency-cap-theorem',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Engineering Practices',
+					items: [
+						'SoftwareEngineering/testing-strategy',
+						'SoftwareEngineering/code-review',
+						'SoftwareEngineering/technical-debt',
+						'SoftwareEngineering/documentation',
+						'SoftwareEngineering/legacy-code',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Decision-Making',
+					items: [
+						'SoftwareEngineering/architecture-decisions',
+						'SoftwareEngineering/anti-patterns',
+						'SoftwareEngineering/case-studies',
+					],
+				},
+			],
+		},
+	],
 };
 
 

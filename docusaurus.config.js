@@ -135,6 +135,11 @@ const config = {
                 docId: 'git-versioncontrol/Introduction',
                 label: 'Git',
               },
+              {
+                type: 'doc',
+                docId: 'SoftwareEngineering/overview',
+                label: 'Software Engineering',
+              },
             ]
           },
           {
